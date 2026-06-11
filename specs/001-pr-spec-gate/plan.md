@@ -39,9 +39,9 @@ GitHub Action.
 **Performance Goals**: Check completes < 90 s for ≤ 5 watched files (SC-005); one classifier
 call per changed watched file, ~3–5K input / ~500 output tokens each.
 
-**Constraints**: CI tests must run without API credentials; classifier cost ≈ $0.03–0.05 per
-file per push on `claude-opus-4-8` (model configurable); fork PRs cannot access secrets
-(skip-with-notice).
+**Constraints**: CI tests must run without API credentials; classifier cost is determined
+by the user's chosen model (configurable via `model:` in config.yml); fork PRs cannot
+access secrets (skip-with-notice).
 
 **Scale/Scope**: Single-repo governance; ≤ ~20 watched files typical; roles files of ≤ ~50
 identities. Monorepo multi-scope is out of scope (product spec §10.7, later phase).

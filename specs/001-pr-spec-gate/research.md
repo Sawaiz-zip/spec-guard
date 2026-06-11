@@ -66,21 +66,20 @@ flagged in SPECGUARD_PRODUCT_SPEC.md §10 that bear on Phase 0.
 - **Decision**: default `on_error: warn` (check passes with a loud "could not classify —
   review manually" annotation); `on_error: fail` opt-in per repo. Config parse errors always
   fail. Deterministic protected-path rules enforce regardless (no API dependency).
-- **Rationale**: a vendor outage freezing every merge across every installed repo is a worse
-  product failure than one unclassified diff slipping through with a visible warning. Teams
-  with stricter postures flip one config key.
-- **Alternatives considered**: fail-closed default (rejected — availability coupling to a
-  third-party API would be the top uninstall reason); silent skip (rejected — undisclosed
-  non-enforcement is worse than either).
+- **Rationale**: a vendor outage should not freeze every merge across every installed repo.
+  An unclassified diff that surfaces a visible warning is a better outcome than silent
+  unavailability. Teams with stricter postures flip one config key.
+- **Alternatives considered**: fail-closed default (rejected — availability coupling to an
+  external API is a reliability risk teams should opt into, not get by default); silent skip
+  (rejected — undisclosed non-enforcement is worse than either).
 
 ## R5. Identity & approval detection without an App
 
 - **Decision**: identity = PR author's GitHub login from the event payload; approvals =
   latest review per reviewer from `GET /pulls/{n}/reviews` with state APPROVED and login in
   the authorizing role; workflow triggers on `pull_request` + `pull_request_review`.
-- **Rationale**: logins are server-verified and consistent across payloads and the Reviews
-  API. Spec §10.8: local git identity is trivially spoofable and therefore irrelevant —
-  enforcement uses platform identity.
+- **Rationale**: platform logins are server-verified and consistent across event payloads
+  and the Reviews API — a reliable, stable identity anchor for enforcement.
 - **Deferred**: commit-author vs PR-opener disambiguation, propose-only agent enforcement,
   email→login mapping (all Phase 2/App). roles.yml therefore uses GitHub usernames, not
   emails as in the product spec's draft sketch.

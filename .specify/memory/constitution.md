@@ -35,8 +35,8 @@ spec format or proposal workflow, and MUST NOT fork, embed, or import code from 
 OpenSpec — only their public file formats matter. Plain mode (raw CLAUDE.md / AGENTS.md /
 arbitrary .md paths) MUST always work without any framework present.
 
-*Rationale: the workflow war is over (Spec Kit 90k stars, OpenSpec 52k); interoperating
-through files avoids license entanglement and survives their internal changes.*
+*Rationale: interoperating through public file formats avoids license entanglement and
+keeps SpecGuard resilient to internal changes in any upstream framework.*
 
 ### III. One Shared Validator Core
 
@@ -52,8 +52,8 @@ approval requirements, loud annotations) is permitted ONLY at genuine direction 
 protected-file violations. Any feature that adds friction to the additive path violates this
 constitution. False positives are treated as release-blocking defects, not tuning issues.
 
-*Rationale: "blocked my Friday merge over a typo" = uninstalled by Monday. A probabilistic
-gate on merges must earn trust before it may exercise power.*
+*Rationale: a probabilistic gate on merges must earn trust before it may exercise power.
+False positives destroy that trust faster than any other failure mode.*
 
 ### V. Deterministic Hard Blocks, Probabilistic Advice
 
@@ -70,8 +70,8 @@ SpecGuard MUST NOT ship a web dashboard, separate website, or separate login. Th
 platform's PR interface is the approval surface; the terminal is the configuration surface.
 Approval paths are: native PR review, PR comment command, and CLI — all recorded identically.
 
-*Rationale: developers do not leave their tools; every winning tool in this category
-(pre-commit, Prettier, Dependabot) is CLI/git-native.*
+*Rationale: governance should live where developers already work — the PR interface and
+the terminal. No new surface to learn, no new login to manage.*
 
 ## Additional Constraints & Scope Boundaries
 

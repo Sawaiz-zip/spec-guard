@@ -19,15 +19,16 @@ SpecGuard is a semantic governance layer for spec files. It classifies every PR 
 
 ## The Problem
 
-```
-Agent opens PR:   "refactored README for clarity"
-Actual change:     Added a SaaS pricing section
-                   to a project scoped as a local CLI tool.
+In repos where AI agents and humans both contribute, a PR can look perfectly fine on the surface while silently shifting the project's direction. SpecGuard catches that — not by checking who made the change, but by understanding what the change means against your locked goal and scope.
 
-CODEOWNERS:        ✅  author has access
-Code review:       ✅  looks fine at a glance
-SpecGuard:         ❌  SCOPE CHANGE — 94% confidence
-                       requires approval from @architect
+```
+PR:         "refactored README for clarity"
+Change:      Added a full SaaS pricing section
+             to a project scoped as a local CLI tool.
+
+SpecGuard:   ❌  SCOPE CHANGE — 94% confidence
+                 "SaaS pricing" is out of scope
+                 requires approval from @architect
 ```
 
 ---

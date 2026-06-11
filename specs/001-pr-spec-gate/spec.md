@@ -20,9 +20,8 @@ the classification, confidence, the out-of-scope topics detected, and who can ap
 an authorized person approves the PR through the platform's normal review flow, the check
 turns green and the merge proceeds.
 
-**Why this priority**: This is the product's entire reason to exist — the governance gap no
-existing tool covers (CODEOWNERS knows paths, not meaning). Without it there is no thesis to
-test.
+**Why this priority**: This is the product's entire reason to exist — semantic governance of
+spec-file changes is the core thesis. Without it there is no thesis to test.
 
 **Independent Test**: In a repository with scope lock + roles configured, open a PR adding an
 out-of-scope topic to a watched file → check fails with explanation; submit an approving
