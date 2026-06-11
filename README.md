@@ -12,8 +12,7 @@
 
 <br/>
 
-**CODEOWNERS knows who can change a file.**
-**SpecGuard knows what those changes are allowed to mean.**
+
 
 </div>
 
