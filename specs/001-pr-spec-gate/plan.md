@@ -160,9 +160,15 @@ Commit-author identity and bot propose-only enforcement are deferred to the App 
 
 ### D5. Classifier call shape
 
-- Model `claude-opus-4-8` (config override: `model:` in config.yml / `SPECGUARD_MODEL`).
-- `client.messages.parse(..., output_format=Classification)` — Pydantic-validated structured
-  output, no hand-rolled JSON parsing. Adaptive thinking, `max_tokens=4000`, non-streaming.
+- **Model**: user-configured via `model:` in `.specguard/config.yml` or `SPECGUARD_MODEL`
+  env var. Default: `claude-opus-4-8`. SpecGuard never mandates a model — users bring their
+  own API key and choose what fits their quality/cost tradeoff.
+- **Phase 0 SDK**: Anthropic Python SDK, `client.messages.parse(..., output_format=Classification)`
+  — Pydantic-validated structured output, no hand-rolled JSON parsing. Adaptive thinking,
+  `max_tokens=4000`, non-streaming.
+- **Phase 1 extension point**: `classifier.py` will expose a `ClassifierAdapter` protocol so
+  alternative providers (OpenAI, Gemini, local models) can be plugged in without touching
+  the engine — same `Classification` output contract, different SDK under the hood.
 - System prompt is byte-stable with `cache_control: {"type": "ephemeral"}` — a PR touching
   N spec files pays the system-prompt tokens once (5-min TTL spans a CI run).
 - User content: goal + full scope_in/scope_out (never truncated) + file path + unified diff

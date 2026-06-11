@@ -6,8 +6,13 @@ Owner: `action.yml` (composite) + `src/specguard/ci.py`.
 
 | Input | Required | Default | Purpose |
 |---|---|---|---|
-| `anthropic-api-key` | yes | — | exported as `ANTHROPIC_API_KEY` |
+| `anthropic-api-key` | yes (Phase 0) | — | exported as `ANTHROPIC_API_KEY`; user-supplied — SpecGuard never bills for API usage |
 | `github-token` | no | `${{ github.token }}` | Reviews API reads (`pull-requests: read`) |
+
+> **Model flexibility**: The classifier model is set by the user via `model:` in `.specguard/config.yml`
+> or the `SPECGUARD_MODEL` env var. The default is `claude-opus-4-8` but any model the user
+> has API access to can be used. Phase 1 will add a `classifier-provider` input for
+> non-Anthropic providers (OpenAI, Gemini, local endpoints).
 
 ## Consumer workflow contract (documented in README)
 

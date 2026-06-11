@@ -17,22 +17,29 @@ flagged in SPECGUARD_PRODUCT_SPEC.md §10 that bear on Phase 0.
 
 ## R2. Classifier model and API usage
 
-- **Decision**: `claude-opus-4-8`, structured output via `client.messages.parse()` with a
-  Pydantic `Classification` model, adaptive thinking, non-streaming, `max_tokens=4000`.
-  Model string configurable (`model:` in config.yml / `SPECGUARD_MODEL` env var).
-- **Rationale**: Classification quality is the product (false positives kill adoption), so
-  default to the most capable Opus-tier model; cost is negligible at this call volume.
-  `messages.parse()` removes the JSON-parsing failure mode entirely — the SDK validates the
-  response against the schema.
-- **Cost model**: ~3–5K input + ~500 output tokens/file at $5/$25 per MTok ≈ $0.03–0.05 per
-  watched file per push. A 5-file PR ≈ ≤ $0.25. Published in README to preempt cost
-  objections.
-- **Prompt caching**: system prompt (rubric + calibration instructions + output contract) is
-  byte-stable with `cache_control: {"type": "ephemeral"}`; multi-file PRs within one CI run
-  hit the 5-minute cache window.
-- **Alternatives considered**: Haiku/Sonnet defaults (cheaper, but calibration risk dominates
-  cost in Phase 0 — revisit after eval data exists); raw `messages.create` + manual JSON
-  parsing (rejected: reintroduces parse failures `parse()` eliminates).
+- **Decision**: Default model `claude-opus-4-8` (Anthropic SDK), structured output via
+  `client.messages.parse()` with a Pydantic `Classification` model, adaptive thinking,
+  non-streaming, `max_tokens=4000`. **Model is fully user-configurable** via `model:` in
+  `.specguard/config.yml` or the `SPECGUARD_MODEL` environment variable — users bring their
+  own API key and choose the model that fits their cost/quality requirements.
+- **Rationale**: The default is the most capable Anthropic Opus model because classification
+  quality is the product — false positives kill adoption. The key design decision is that
+  SpecGuard never mandates a specific model or bills users directly: the API key is a repo
+  secret owned by the installing team, and cost scales entirely with their model choice.
+  `messages.parse()` removes the JSON-parsing failure mode entirely — the SDK validates
+  the response against the Pydantic schema.
+- **Cost model**: Cost is the user's, not SpecGuard's. With the default `claude-opus-4-8`,
+  expect ~3–5K input + ~500 output tokens per watched file per push; with a lighter model
+  (Haiku, Sonnet, or a third-party equivalent) costs drop proportionally. The system prompt
+  is byte-stable with `cache_control: {"type": "ephemeral"}` — multi-file PRs in one CI run
+  share the prompt cost via the 5-minute cache window.
+- **Multi-provider path (Phase 1+)**: Phase 0 uses the Anthropic SDK directly. Phase 1 will
+  introduce a `ClassifierAdapter` interface so users can plug in OpenAI, Gemini, or a local
+  model — same structured output contract, different SDK under the hood.
+- **Alternatives considered**: Hardcoding a cheap default model (rejected — calibration risk
+  dominates cost in Phase 0, and users who want cheaper can configure it); raw
+  `messages.create` + manual JSON parsing (rejected — reintroduces parse failures that
+  `parse()` eliminates).
 
 ## R3. Confidence thresholds and outcome mapping
 

@@ -216,7 +216,9 @@ explanation a team would see.
 - Plain mode only: scope comes from SpecGuard's own lock file; reading Spec Kit
   constitutions / OpenSpec proposals as scope sources is adapter work (Phase 2).
 - Section-level (sub-file) locking is explicitly Phase 3 (no prior art; product spec §10.3).
-- The repository owner supplies the AI-evaluator API credential as a repo secret; evaluation
-  cost (a few cents per PR push) is borne by the installing repo.
+- The repository owner supplies their own AI-evaluator API key as a repo secret. The default
+  classifier uses the Anthropic API, but the model is fully configurable — users may switch to
+  any model string supported by their chosen provider. Evaluation cost is determined entirely
+  by the model the user selects and is borne by the installing repo.
 - Risk level (LOW/MEDIUM/HIGH) is displayed for context but does not drive outcomes in
   Phase 0; the confidence threshold is the only probabilistic control.

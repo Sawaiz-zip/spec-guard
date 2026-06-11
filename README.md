@@ -168,7 +168,7 @@ watch:
 
 block_threshold: 0.75       # SCOPE_CHANGE blocks above this confidence (0.0–1.0)
 on_error: warn              # warn = fail-open on API outage | fail = fail-closed
-model: claude-opus-4-8      # classifier model (any Anthropic model string)
+model: claude-opus-4-8      # any model you have API access to — you own the cost
 max_diff_chars: 30000       # diff size cap — scope lists are never truncated
 ```
 
@@ -187,15 +187,19 @@ max_diff_chars: 30000       # diff size cap — scope lists are never truncated
 
 ---
 
-## Cost
+## Bring Your Own Model
 
-| Scenario | Approximate cost |
+SpecGuard never bills you directly. You supply your own API key and choose the model — cost is entirely yours to control.
+
+| Config | How to set it |
 |:---|:---|
-| Single watched file changed | ~$0.03–0.05 |
-| 5-file PR | ≤ $0.25 |
-| System prompt (cached across files in one run) | Paid once per run |
+| Model | `model:` in `.specguard/config.yml` or `SPECGUARD_MODEL` env var |
+| API key | `ANTHROPIC_API_KEY` repo secret (or your provider's equivalent) |
+| Default model | `claude-opus-4-8` — swap to any model you have access to |
 
-Uses `claude-opus-4-8` by default — classification quality is the product. The model is configurable for teams that want to optimize cost after validating on their corpus.
+**Cost scales with your model choice.** A lighter model (Haiku, Sonnet, or a third-party equivalent) costs proportionally less. The classifier system prompt is cached across all files in a single run — multi-file PRs share that cost.
+
+> Phase 1 will add support for non-Anthropic providers (OpenAI, Gemini, local models) via a pluggable classifier adapter — same structured output contract, your choice of SDK.
 
 ---
 
