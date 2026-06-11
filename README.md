@@ -1,36 +1,57 @@
+<div align="center">
+
 # SpecGuard
 
-> CODEOWNERS understands file paths. SpecGuard understands what the change *means*.
+**Semantic governance for spec files — built for teams where humans and AI agents collaborate.**
 
-SpecGuard is a semantic governance layer for spec files in repositories where humans and AI agents collaborate. It runs as a required GitHub Actions status check, classifies every PR change to your watched spec files using Claude, and blocks unapproved scope changes — while passing additive changes silently.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Status: Phase 0](https://img.shields.io/badge/Status-Phase%200%20MVP-orange.svg)]()
+
+</div>
+
+---
+
+CODEOWNERS enforces who can change a file.
+SpecGuard enforces **what** those changes are allowed to mean.
+
+It runs as a required GitHub Actions status check. When a pull request touches a watched spec file, SpecGuard classifies the change against the repository's locked goal and scope — then either passes it silently, surfaces a warning, or blocks the merge until an authorized reviewer approves.
 
 ---
 
 ## How it works
 
-1. You lock your project goal and scope (in/out lists) in `.specguard/lock.json`
-2. A contributor — human or AI agent — opens a PR touching a watched spec file
-3. SpecGuard classifies the change: **ADDITIVE** (within scope → passes silently) or **SCOPE CHANGE** (alters goals/direction → blocked until an authorized role approves)
-4. An authorized reviewer approves via GitHub's normal review flow → check turns green → merge proceeds
+Lock your project goal and scope in a single JSON file. SpecGuard does the rest.
 
 ```
-PR opened
-  └─ Watched file changed?
-       ├─ No → pass (nothing to evaluate)
-       ├─ Unauthorized editor on protected path → BLOCK (deterministic, no AI)
-       └─ Yes → Claude classifies the diff
-                 ├─ ADDITIVE → PASS (quiet log line, zero friction)
-                 └─ SCOPE CHANGE
-                       ├─ confidence < threshold → WARN (never blocks)
-                       ├─ no roles defined → WARN (solo mode)
-                       └─ confidence ≥ threshold → BLOCK until authorized approval
+Pull Request opened
+│
+├── File not in watch list ─────────────────────────────► Pass
+│
+├── Protected path + unauthorized author ───────────────► Block  (deterministic)
+│
+└── Watched file changed
+      │
+      └── Claude classifies the diff against locked scope
+            │
+            ├── ADDITIVE (within scope) ────────────────► Pass   (silent)
+            │
+            └── SCOPE CHANGE
+                  ├── Confidence below threshold ────────► Warn   (never blocks)
+                  ├── No roles defined (solo mode) ──────► Warn
+                  └── Confidence ≥ threshold ────────────► Block  (until authorized approval)
 ```
+
+When a qualifying reviewer approves the pull request, the check re-evaluates automatically — no new commits needed.
 
 ---
 
-## Quickstart (5 minutes)
+## Quickstart
 
-### 1. Create `.specguard/lock.json`
+Five minutes from zero to a working required check.
+
+### 1 — Lock your scope
+
+Create `.specguard/lock.json`:
 
 ```json
 {
@@ -40,27 +61,33 @@ PR opened
 }
 ```
 
-### 2. Optionally create `.specguard/roles.yml`
+### 2 — Define roles *(optional — enables enforce mode)*
+
+Create `.specguard/roles.yml`:
 
 ```yaml
 roles:
   architect: [your-github-username]
+
 rules:
   ".specguard/**":
-    edit: architect
+    edit: architect                      # only architect may edit governance config
   "README.md":
     scope_changes:
-      approve: architect
+      approve: architect                 # architect approval unblocks scope changes
 ```
 
-### 3. Add the workflow
+Without this file, SpecGuard runs in **warn-only mode** — classifications and explanations are surfaced as PR annotations, but nothing is blocked.
+
+### 3 — Add the workflow
+
+Create `.github/workflows/specguard.yml`:
 
 ```yaml
-# .github/workflows/specguard.yml
 name: specguard
 on:
   pull_request:
-  pull_request_review:
+  pull_request_review:          # re-evaluates when an approval is submitted
 permissions:
   contents: read
   pull-requests: read
@@ -75,21 +102,41 @@ jobs:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-### 4. Add your Anthropic API key
+### 4 — Add your API key
 
-GitHub → Settings → Secrets → `ANTHROPIC_API_KEY`
+**Repository → Settings → Secrets and variables → Actions → New repository secret**
 
-### 5. Enable branch protection
+Name: `ANTHROPIC_API_KEY`
 
-Settings → Branches → Require status check: `specguard`
+### 5 — Require the check
 
-That's it. Open a PR that adds an out-of-scope topic to a watched file → see the block → have an authorized reviewer approve → watch it turn green.
+**Repository → Settings → Branches → Add rule → Require status checks → `specguard`**
+
+Open a pull request that introduces an out-of-scope topic to a watched file. The check will block, explain exactly why, and name who can approve. When they do, the check turns green.
+
+---
+
+## Verdict reference
+
+| Change | Result |
+|---|---|
+| Typo fix or clarification within locked scope | Pass — no annotation |
+| New detail that elaborates an in-scope item | Pass — no annotation |
+| New section on an out-of-scope topic | Block — requires authorized approval |
+| Goal or direction change | Block — requires authorized approval |
+| Protected path edited by unauthorized identity | Block — deterministic, no AI call |
+| Classification confidence below threshold | Warn — annotation only, never blocks |
+| API outage | Pass + warning *(configurable to fail-closed)* |
+| Fork PR — secrets unavailable | Pass + notice |
+| No `.specguard/` directory | Pass + setup notice |
+
+Every blocking verdict displays the classification, confidence percentage, matched out-of-scope topics, a plain-language explanation, and the role whose approval will unblock it.
 
 ---
 
 ## Configuration
 
-### `.specguard/config.yml` (all optional, shown with defaults)
+`.specguard/config.yml` — all fields optional:
 
 ```yaml
 watch:
@@ -99,54 +146,55 @@ watch:
   - ARCHITECTURE.md
   - "*.kilo"
   - ".specguard/**"
-block_threshold: 0.75      # SCOPE_CHANGE blocks above this confidence
-on_error: warn             # warn = fail-open on API outage; fail = fail-closed
-model: claude-opus-4-8     # classifier model
-max_diff_chars: 30000      # diff truncation limit (scope lists are never truncated)
+
+block_threshold: 0.75       # SCOPE_CHANGE blocks above this confidence (0–1)
+on_error: warn              # warn = fail-open on outage | fail = fail-closed
+model: claude-opus-4-8      # classifier model (any Anthropic model string)
+max_diff_chars: 30000       # diff size limit — scope lists are never truncated
 ```
-
-### Solo mode
-
-No `roles.yml` → SpecGuard runs in warn-only mode. SCOPE_CHANGE classifications surface as warnings but never block merges (a PR author cannot approve their own PR, so blocking would deadlock a team of one).
-
-### No configuration at all
-
-No `.specguard/` directory → check passes with a single setup notice. Never blocks an unconfigured repo.
-
----
-
-## What it blocks vs. what it doesn't
-
-| Change | Outcome |
-|---|---|
-| Typo fix in a watched file | PASS — silent |
-| Clarification within locked scope | PASS — silent |
-| New section on an out-of-scope topic | BLOCK until authorized approval |
-| Goal sentence rewritten to change direction | BLOCK until authorized approval |
-| Edit to a protected path by unauthorized identity | BLOCK — deterministic, no AI involved |
-| Borderline change (confidence below threshold) | WARN — never blocks |
-| Classifier unavailable (API outage) | PASS + loud warning (configurable to fail) |
-| Fork PR (secrets unavailable) | PASS + notice |
 
 ---
 
 ## Cost
 
-~$0.03–$0.05 per watched file per PR push on `claude-opus-4-8`. A 5-file PR costs ≤ $0.25. System prompt is cached across files in a single run. Model is configurable.
+Approximately **$0.03–$0.05 per watched file per PR push** using `claude-opus-4-8`. A pull request touching five spec files costs under $0.25. The classifier system prompt is cached across all files in a single run, so multi-file PRs share the prompt cost.
+
+The model is configurable — teams with stricter cost requirements can switch to a lighter model after validating calibration on their corpus.
 
 ---
 
-## Development
+## Design principles
 
-This project is planned using [GitHub Spec Kit](https://github.com/github/spec-kit).
+SpecGuard is governed by six non-negotiable principles documented in [`.specify/memory/constitution.md`](.specify/memory/constitution.md):
 
-- Constitution: `.specify/memory/constitution.md`
-- Feature spec: `specs/001-pr-spec-gate/spec.md`
-- Implementation plan: `specs/001-pr-spec-gate/plan.md`
-- Tasks: `specs/001-pr-spec-gate/tasks.md`
+1. **Merge-time enforcement is the only security layer.** Local layers are bypassable; branch protection is not.
+2. **Governance overlay, not a framework.** SpecGuard reads your files — it does not replace your spec format.
+3. **One shared validator core.** Every surface (CI, CLI, hooks) calls the same engine.
+4. **Zero friction for additive changes.** A false block is a release-blocking defect.
+5. **Deterministic hard blocks, probabilistic advice.** Protected-path rules never touch the LLM. Classifier verdicts always show their confidence.
+6. **No dashboard, no new UI.** The PR interface and terminal are the only surfaces.
+
+---
+
+## Project structure
+
+```
+.specguard/              # governance config (lives in your repository)
+├── lock.json            # locked goal + scope lists
+├── config.yml           # optional: watch list, thresholds, model
+└── roles.yml            # optional: roles → GitHub usernames + path rules
+
+specs/001-pr-spec-gate/  # Spec Kit planning artifacts
+├── spec.md              # feature specification
+├── plan.md              # implementation plan
+├── research.md          # decision rationale
+├── data-model.md        # entity definitions
+├── tasks.md             # 38 ordered build tasks
+└── contracts/           # classifier + action interface contracts
+```
 
 ---
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
