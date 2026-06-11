@@ -13,10 +13,7 @@
 
 ---
 
-**CODEOWNERS** knows who can change a file.
-**SpecGuard** knows what those changes are allowed to *mean*.
-
-When AI agents and humans both contribute to a repo, the real threat isn't an unauthorized author — it's an unauthorized direction change. SpecGuard catches those at merge time, before they land.
+SpecGuard is a semantic governance layer for spec files. It classifies every PR change against your locked project goal and scope — passing additive changes silently, warning on low-confidence shifts, and blocking unapproved direction changes at merge time.
 
 ---
 
