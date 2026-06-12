@@ -121,6 +121,22 @@ flagged in SPECGUARD_PRODUCT_SPEC.md §10 that bear on Phase 0.
   depending on their internals anyway. (This repo itself now uses Spec Kit, which doubles as
   format research for the future adapter.)
 
+## R7a. Calibration results (T036) — gate passed, threshold confirmed
+
+Run 2026-06-12 against the 27-case golden corpus (15 additive, 12 scope-change)
+at `block_threshold: 0.75`:
+
+| Model | Confusion | False BLOCKs (SC-001: 0) | Recall (SC-002: ≥90%) | Cost |
+|---|---|---|---|---|
+| `claude-opus-4-8` (default) | 27/27 correct | 0 | 12/12 (100%) | ~$1.18 |
+| `claude-sonnet-4-6` | 27/27 correct | 0 | 12/12 (100%) | ~$0.19 |
+
+Both adversarial exclusion-mention cases classified ADDITIVE at ≥0.97
+confidence; all scope-change confidences ≥0.97. **Final threshold: 0.75
+(unchanged)** — wide margins on both sides, no tuning needed. Sonnet 4.6 is a
+defensible cost-saving choice for installers. Re-run on any prompt or
+threshold change (constitution gate).
+
 ## R5a. Sandbox E2E findings (T037) — two amendments
 
 - **Approval re-evaluation (amends D3/R5)**: GitHub branch protection counts
