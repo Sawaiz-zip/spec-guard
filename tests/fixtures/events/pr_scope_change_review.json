@@ -1,0 +1,10 @@
+{
+  "action": "submitted",
+  "review": { "user": { "login": "alice" }, "state": "approved" },
+  "pull_request": {
+    "number": 42,
+    "user": { "login": "dev" },
+    "base": { "sha": "BASE_SHA", "repo": { "full_name": "acme/widgets" } },
+    "head": { "sha": "HEAD_SHA", "repo": { "full_name": "acme/widgets", "fork": false } }
+  }
+}

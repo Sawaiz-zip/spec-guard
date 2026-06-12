@@ -106,7 +106,10 @@ def _summary_block(
     c = verdict.classification
     if verdict.reason == "additive":
         assert c is not None
-        return [f"✅ `{verdict.file}` — ADDITIVE ({c.confidence:.0%}): {c.summary}", ""]
+        line = f"✅ `{verdict.file}` — ADDITIVE ({c.confidence:.0%}): {c.summary}"
+        if c.confidence < 0.60:
+            line += " (low confidence — a quick look is suggested)"
+        return [line, ""]
     if verdict.reason == "scope_change_approved":
         assert c is not None
         return [

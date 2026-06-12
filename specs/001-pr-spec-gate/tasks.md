@@ -80,10 +80,10 @@ file with "ADDITIVE" and no block/warn icons.
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Add `tests/fixtures/events/pr_typo_fix.json` and `pr_scope_change.json` event payloads (pull_request and pull_request_review variants for each)
-- [ ] T019 [P] [US2] Write `tests/test_engine.py` ADDITIVE scenarios: FakeAnthropicClient returns ADDITIVE/0.95 → Verdict outcome=PASS reason=additive; non-watched changed files → skipped; ADDITIVE with confidence < 0.60 → PASS with notice
-- [ ] T020 [P] [US2] Write `tests/test_classifier.py`: prompt assembly covers scope_lock never truncated; diff hunk context capped; test FakeAnthropicClient returns schema-valid Classification; test re-ask on schema failure; test ClassifierError on exhaustion
-- [ ] T021 [US2] Write `tests/test_ci.py`: point `GITHUB_EVENT_PATH` at `pr_typo_fix.json` fixture → exit 0 and empty annotation list; point at fork-event fixture → exit 0 + skip notice
+- [X] T018 [US2] Add `tests/fixtures/events/pr_typo_fix.json` and `pr_scope_change.json` event payloads (pull_request and pull_request_review variants for each)
+- [X] T019 [P] [US2] Write `tests/test_engine.py` ADDITIVE scenarios: FakeAnthropicClient returns ADDITIVE/0.95 → Verdict outcome=PASS reason=additive; non-watched changed files → skipped; ADDITIVE with confidence < 0.60 → PASS with notice
+- [X] T020 [P] [US2] Write `tests/test_classifier.py`: prompt assembly covers scope_lock never truncated; diff hunk context capped; test FakeAnthropicClient returns schema-valid Classification; test re-ask on schema failure; test ClassifierError on exhaustion
+- [X] T021 [US2] Write `tests/test_ci.py`: point `GITHUB_EVENT_PATH` at `pr_typo_fix.json` fixture → exit 0 and empty annotation list; point at fork-event fixture → exit 0 + skip notice
 
 **Checkpoint**: US1 and US2 both pass. Additive path confirmed friction-free.
 

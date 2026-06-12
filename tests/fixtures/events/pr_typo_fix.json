@@ -1,0 +1,8 @@
+{
+  "pull_request": {
+    "number": 41,
+    "user": { "login": "dev" },
+    "base": { "sha": "BASE_SHA", "repo": { "full_name": "acme/widgets" } },
+    "head": { "sha": "HEAD_SHA", "repo": { "full_name": "acme/widgets", "fork": false } }
+  }
+}
