@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "specguard"
+name = "specguard-ci"
 version = "0.1.0"
 description = "Semantic governance gate for spec files: classifies PR changes against a locked project goal and scope."
 readme = "README.md"

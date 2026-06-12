@@ -141,7 +141,7 @@ one `::notice` with setup instructions.
 - [X] T035 Complete `.github/workflows/specguard.yml`: dogfood — watch `SPECGUARD_PRODUCT_SPEC.md`, `README.md`, and `specs/**/*.md`; reference the published action once T017 + T038 are done
 - [X] T036 Run `tests/eval/run_eval.py` against real API; tune system prompt and/or `block_threshold` until SC-001 (0 false BLOCKs on additive corpus) and SC-002 (≥90% recall on scope-change corpus) both pass; document final threshold in `research.md`
 - [X] T037 Sandbox E2E: create throwaway GitHub repo with config from README templates; execute all 6 scenarios from `quickstart.md V4`; confirm blocked-then-approved-then-green flow works; save blocked-PR screenshot for README
-- [ ] T038 [P] PyPI publish: bump version in `pyproject.toml`; `python -m build && twine upload dist/*`; tag action repo `v0`; pin version in `action.yml`
+- [X] T038 [P] PyPI publish: bump version in `pyproject.toml`; `python -m build && twine upload dist/*`; tag action repo `v0`; pin version in `action.yml`
 
 ---
 
