@@ -20,9 +20,9 @@ criteria instead.
 
 **Purpose**: Project initialization — must complete before any other phase.
 
-- [ ] T001 Create project structure: `pyproject.toml`, `src/specguard/__init__.py`, `tests/conftest.py` skeleton, empty fixture dirs `tests/fixtures/corpus/` and `tests/fixtures/events/`
-- [ ] T002 [P] Scaffold GitHub Actions workflows: `.github/workflows/tests.yml` (pytest on push/PR) and `.github/workflows/specguard.yml` (dogfood — placeholder, wired up in T035)
-- [ ] T003 [P] Add `ruff` + `mypy` config to `pyproject.toml`; confirm `pytest` discovers `tests/`
+- [X] T001 Create project structure: `pyproject.toml`, `src/specguard/__init__.py`, `tests/conftest.py` skeleton, empty fixture dirs `tests/fixtures/corpus/` and `tests/fixtures/events/`
+- [X] T002 [P] Scaffold GitHub Actions workflows: `.github/workflows/tests.yml` (pytest on push/PR) and `.github/workflows/specguard.yml` (dogfood — placeholder, wired up in T035)
+- [X] T003 [P] Add `ruff` + `mypy` config to `pyproject.toml`; confirm `pytest` discovers `tests/`
 
 ---
 

@@ -1,0 +1,32 @@
+name: specguard
+
+# Dogfood: SpecGuard guards this repository's own spec files.
+# Wired up fully in T035; runs the engine from the working tree until the
+# composite action is published to PyPI (T038), after which this switches to
+# `uses: <org>/specguard-action@v0`.
+
+on:
+  pull_request:
+  pull_request_review:        # approval re-evaluation — required for enforce mode
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  specguard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # required: base...head history
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install specguard from working tree
+        run: pip install .
+      - name: Run SpecGuard
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python -m specguard.ci
