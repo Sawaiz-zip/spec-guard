@@ -1,0 +1,4 @@
+{
+  "classification": "SCOPE_CHANGE",
+  "description": "Replaces batch ingestion with real-time streaming \u2014 direction shift into scope_out."
+}

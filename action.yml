@@ -1,0 +1,35 @@
+name: SpecGuard
+description: >-
+  Semantic governance gate for spec files — classifies PR changes against a
+  locked project goal and scope, and blocks unauthorized scope changes.
+branding:
+  icon: shield
+  color: purple
+
+inputs:
+  anthropic-api-key:
+    description: >-
+      Anthropic API key used for classification. User-supplied — SpecGuard
+      never bills for API usage. The model is chosen via `model:` in
+      .specguard/config.yml or the SPECGUARD_MODEL env var.
+    required: true
+  github-token:
+    description: GitHub token for Reviews API reads (pull-requests: read).
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - name: Install specguard
+      shell: bash
+      run: pip install --quiet specguard==0.1.0
+    - name: Run SpecGuard
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: python -m specguard.ci

@@ -1,0 +1,17 @@
+{
+  "goal": "A batch ETL pipeline that ingests daily CSV sales reports into a PostgreSQL warehouse",
+  "scope_in": [
+    "CSV parsing and validation",
+    "PostgreSQL loading",
+    "daily scheduling",
+    "data quality checks"
+  ],
+  "scope_out": [
+    "real-time streaming",
+    "machine learning forecasting",
+    "third-party data marketplaces",
+    "dashboard UI"
+  ],
+  "locked_at": "2026-06-01T00:00:00Z",
+  "locked_by": "alice"
+}

@@ -1,0 +1,18 @@
+{
+  "goal": "A local command-line tool for managing personal todo lists stored in plain text files",
+  "scope_in": [
+    "task creation and editing",
+    "task completion and archiving",
+    "due dates and reminders",
+    "plain-text local storage",
+    "terminal user interface"
+  ],
+  "scope_out": [
+    "SaaS pricing or subscriptions",
+    "cloud sync",
+    "mobile apps",
+    "team collaboration features"
+  ],
+  "locked_at": "2026-06-01T00:00:00Z",
+  "locked_by": "alice"
+}
