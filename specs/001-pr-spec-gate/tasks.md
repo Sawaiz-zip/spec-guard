@@ -100,9 +100,9 @@ architect PR → edit-rule passes, proceeds to classify normally.
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Extend `src/specguard/engine.py` protected-violation branch: before any API call, if `is_edit_authorized(author_login, path)` is False → produce `Verdict(outcome=BLOCK, reason=protected_violation, classification=None)`; confirm no `classifier.py` call occurs in this path (verifiable via FakeAnthropicClient call counter)
-- [ ] T023 [P] [US3] Write `tests/test_engine.py` protected-violation scenarios: unauthorized author + protected path → BLOCK/protected_violation, FakeAnthropicClient called 0 times; authorized author + protected path → proceeds to classification
-- [ ] T024 [P] [US3] Write `tests/test_roles.py`: glob matching (exact, wildcard, most-specific); `"*"` wildcard membership; unknown role reference → ConfigError; missing roles.yml → solo mode flag
+- [X] T022 [US3] Extend `src/specguard/engine.py` protected-violation branch: before any API call, if `is_edit_authorized(author_login, path)` is False → produce `Verdict(outcome=BLOCK, reason=protected_violation, classification=None)`; confirm no `classifier.py` call occurs in this path (verifiable via FakeAnthropicClient call counter)
+- [X] T023 [P] [US3] Write `tests/test_engine.py` protected-violation scenarios: unauthorized author + protected path → BLOCK/protected_violation, FakeAnthropicClient called 0 times; authorized author + protected path → proceeds to classification
+- [X] T024 [P] [US3] Write `tests/test_roles.py`: glob matching (exact, wildcard, most-specific); `"*"` wildcard membership; unknown role reference → ConfigError; missing roles.yml → solo mode flag
 
 **Checkpoint**: US1 + US2 + US3 all pass. Self-protecting governance config working.
 

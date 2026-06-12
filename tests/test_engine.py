@@ -166,3 +166,54 @@ class TestScopeChange:
             client, no_approvals,
         )
         assert verdicts[0].outcome == "WARN"
+
+
+# ---------------------------------------------------------------------------
+# US3: protected file edited by unauthorized identity (T023)
+# ---------------------------------------------------------------------------
+
+
+class TestProtectedViolation:
+    def test_unauthorized_author_hard_blocked_without_api_call(
+        self, sample_lock, sample_config, sample_roles, pr_context
+    ):
+        # pr_context.author_login == "dev", not in the architect role.
+        changed = [diff_from_contents(".specguard/roles.yml", "a\n", "b\n")]
+        client = FakeAnthropicClient()
+        verdicts = evaluate_pr(
+            changed, sample_lock, sample_config, sample_roles, pr_context,
+            client, no_approvals,
+        )
+        assert verdicts[0].outcome == "BLOCK"
+        assert verdicts[0].reason == "protected_violation"
+        assert verdicts[0].classification is None  # deterministic — no LLM verdict
+        assert client.call_count == 0
+
+    def test_authorized_author_proceeds_to_classification(
+        self, sample_lock, sample_config, sample_roles, pr_context
+    ):
+        pr = pr_context.model_copy(update={"author_login": "alice"})  # architect
+        changed = [diff_from_contents(".specguard/roles.yml", "a\n", "b\n")]
+        client = FakeAnthropicClient(
+            responses={".specguard/roles.yml": make_classification("ADDITIVE", 0.9)}
+        )
+        verdicts = evaluate_pr(
+            changed, sample_lock, sample_config, sample_roles, pr,
+            client, no_approvals,
+        )
+        assert verdicts[0].outcome == "PASS"
+        assert verdicts[0].reason == "additive"
+        assert client.call_count == 1
+
+    def test_protected_block_has_no_approval_escape(
+        self, sample_lock, sample_config, sample_roles, pr_context
+    ):
+        # Even an architect approval does not unblock a protected violation.
+        changed = [diff_from_contents(".specguard/config.yml", "a\n", "b\n")]
+        verdicts = evaluate_pr(
+            changed, sample_lock, sample_config, sample_roles, pr_context,
+            FakeAnthropicClient(),
+            lambda: [Approval(reviewer_login="alice", state="APPROVED")],
+        )
+        assert verdicts[0].outcome == "BLOCK"
+        assert verdicts[0].reason == "protected_violation"
