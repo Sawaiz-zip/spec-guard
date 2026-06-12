@@ -104,10 +104,10 @@ SCOPE_CHANGE verdict + advisory flag; non-watched path → `watched: false`, no 
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T021 [P] Update `README.md`: Local Tools section (check/init usage, pre-commit snippet, MCP client config example), roadmap Phase 1 status flip; keep positive framing
-- [ ] T022 [P] Update `docs/quickstart.md` with local-tools validation scenarios mirroring `specs/002-local-tools/quickstart.md` V1–V6
-- [ ] T023 Run validation: V1 (full suite, mocked), V2 (parity suite), V3 init-to-check in a throwaway dir, V4 hook matrix live, V6 baseline-trust live; V5 MCP with a real client if available — record results in quickstart or PR notes
-- [ ] T024 Release: bump to `0.2.0`, `uv build`, publish `specguard-ci`, tag `v0.2.0` + move/retag action line if needed, update `.pre-commit-hooks.yaml` consumer `rev` reference in README
+- [X] T021 [P] Update `README.md`: Local Tools section (check/init usage, pre-commit snippet, MCP client config example), roadmap Phase 1 status flip; keep positive framing
+- [X] T022 [P] Update `docs/quickstart.md` with local-tools validation scenarios mirroring `specs/002-local-tools/quickstart.md` V1–V6
+- [X] T023 Run validation: V1 (full suite, mocked), V2 (parity suite), V3 init-to-check in a throwaway dir, V4 hook matrix live, V6 baseline-trust live; V5 MCP with a real client if available — record results in quickstart or PR notes
+- [X] T024 Release: bump to `0.2.0`, `uv build`, publish `specguard-ci`, tag `v0.2.0` + move/retag action line if needed, update `.pre-commit-hooks.yaml` consumer `rev` reference in README
 
 ---
 
