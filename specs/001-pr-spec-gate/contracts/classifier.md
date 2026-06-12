@@ -5,7 +5,7 @@ The single Claude API call per watched changed file. Owner: `src/specguard/class
 ## Request
 
 - Endpoint: Anthropic Messages API via `client.messages.parse()`
-- Model: from Config (`claude-opus-4-8` default)
+- Model: from Config (`claude-sonnet-4-6` default; `claude-opus-4-8` is hard-blocked by a project guardrail at config validation AND in classify())
 - `thinking: {"type": "adaptive"}`, `max_tokens: 4000`, non-streaming
 - `output_format`: the `Classification` Pydantic model (SDK-enforced schema)
 

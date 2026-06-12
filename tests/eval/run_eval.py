@@ -29,7 +29,6 @@ CORPUS = Path(__file__).parent.parent / "fixtures" / "corpus"
 
 # USD per million tokens (input, output) — rough, for the cost line only.
 PRICES = {
-    "claude-opus-4-8": (15.0, 75.0),
     "claude-sonnet-4-6": (3.0, 15.0),
     "claude-haiku-4-5-20251001": (1.0, 5.0),
 }
@@ -59,9 +58,9 @@ def main() -> int:
     parser.add_argument("--threshold", type=float, default=0.75)
     args = parser.parse_args()
 
-    config = Config(block_threshold=args.threshold)
-    if args.model:
-        config = config.model_copy(update={"model": args.model})
+    # Constructor (not model_copy) so the model guardrail validates --model.
+    model_kwargs = {"model": args.model} if args.model else {}
+    config = Config(block_threshold=args.threshold, **model_kwargs)
 
     client = RecordingClient(anthropic.Anthropic(max_retries=2))
 

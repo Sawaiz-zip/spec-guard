@@ -121,6 +121,26 @@ flagged in SPECGUARD_PRODUCT_SPEC.md §10 that bear on Phase 0.
   depending on their internals anyway. (This repo itself now uses Spec Kit, which doubles as
   format research for the future adapter.)
 
+## R2a. Model guardrail (amends R2): default Sonnet 4.6, Opus 4.8 hard-blocked
+
+Owner decision (2026-06-12): `claude-opus-4-8` must NEVER be invoked — not by
+default, not via config.yml, not via `SPECGUARD_MODEL`, not by the eval
+harness, and not on any retry/failure path. Calibration (R7a) showed Sonnet
+4.6 classifies the golden corpus identically (27/27) at ~6× lower cost, so
+Opus has no quality case here. Enforcement is layered:
+
+1. `Config.model` default is `claude-sonnet-4-6`; a Pydantic validator rejects
+   any model matching `BLOCKED_MODEL_MARKERS` (`opus-4-8`, covering dated
+   variants) → ConfigError, exit 2.
+2. The `SPECGUARD_MODEL` env override re-validates the full Config (a plain
+   `model_copy` would skip validation).
+3. `classifier.classify()` calls `assert_model_allowed()` immediately before
+   any API call — a blocked model raises ValueError and crashes the run; it
+   is deliberately NOT a ClassifierError so the fail-open `on_error: warn`
+   policy can never swallow it.
+
+Tests: `test_config.py::TestOpusGuardrail`.
+
 ## R7a. Calibration results (T036) — gate passed, threshold confirmed
 
 Run 2026-06-12 against the 27-case golden corpus (15 additive, 12 scope-change)

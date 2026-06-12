@@ -161,7 +161,7 @@ Commit-author identity and bot propose-only enforcement are deferred to the App 
 ### D5. Classifier call shape
 
 - **Model**: user-configured via `model:` in `.specguard/config.yml` or `SPECGUARD_MODEL`
-  env var. Default: `claude-opus-4-8`. SpecGuard never mandates a model — users bring their
+  env var. Default: `claude-sonnet-4-6` (Opus 4.8 hard-blocked — see research.md R2a). SpecGuard never mandates a model — users bring their
   own API key and choose what fits their quality/cost tradeoff.
 - **Phase 0 SDK**: Anthropic Python SDK, `client.messages.parse(..., output_format=Classification)`
   — Pydantic-validated structured output, no hand-rolled JSON parsing. Adaptive thinking,

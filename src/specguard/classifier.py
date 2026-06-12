@@ -13,7 +13,12 @@ from typing import Any, Protocol
 from pydantic import ValidationError
 
 from specguard.gitdiff import ChangedFile
-from specguard.models import Classification, Config, ScopeLock
+from specguard.models import (
+    Classification,
+    Config,
+    ScopeLock,
+    assert_model_allowed,
+)
 
 
 class ClassifierError(Exception):
@@ -124,6 +129,10 @@ def classify(
     config: Config,
 ) -> Classification:
     """Classify one changed watched file. Raises ClassifierError on exhaustion."""
+    # Last-line guardrail before any API call: a blocked model must hard-fail
+    # the run (ValueError -> crash/exit 2), never degrade into the on_error
+    # policy like a ClassifierError would.
+    assert_model_allowed(config.model)
     user_message, truncated = build_user_message(lock, changed, config.max_diff_chars)
     messages: list[dict[str, Any]] = [{"role": "user", "content": user_message}]
 

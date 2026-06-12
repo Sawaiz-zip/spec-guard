@@ -68,7 +68,7 @@ class TestConfig:
         assert config.watch == DEFAULT_WATCH
         assert config.block_threshold == 0.75
         assert config.on_error == "warn"
-        assert config.model == "claude-opus-4-8"
+        assert config.model == "claude-sonnet-4-6"
         assert config.max_diff_chars == 30000
 
     def test_partial_config_fills_defaults(self, tmp_path):
@@ -96,6 +96,41 @@ class TestConfig:
         write_specguard(tmp_path, "config.yml", "model: claude-haiku-4-5-20251001\n")
         monkeypatch.setenv("SPECGUARD_MODEL", "claude-sonnet-4-6")
         assert load_config(tmp_path).model == "claude-sonnet-4-6"
+
+
+class TestOpusGuardrail:
+    """Opus 4.8 must NEVER be invoked — blocked at every entry point."""
+
+    def test_config_yml_with_opus_raises(self, tmp_path):
+        write_specguard(tmp_path, "config.yml", "model: claude-opus-4-8\n")
+        with pytest.raises(ConfigError, match="blocked by project guardrail"):
+            load_config(tmp_path)
+
+    def test_env_override_with_opus_raises(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("SPECGUARD_MODEL", "claude-opus-4-8")
+        with pytest.raises(ConfigError, match="blocked by project guardrail"):
+            load_config(tmp_path)
+
+    def test_classifier_refuses_opus_before_any_api_call(self, sample_lock):
+        from conftest import FakeAnthropicClient
+        from specguard.classifier import classify
+        from specguard.gitdiff import diff_from_contents
+        from specguard.models import Config
+
+        # model_copy bypasses validation — exactly the hole the classifier
+        # guard exists to close.
+        config = Config().model_copy(update={"model": "claude-opus-4-8"})
+        client = FakeAnthropicClient()
+        changed = diff_from_contents("README.md", "a\n", "b\n")
+        with pytest.raises(ValueError, match="blocked by project guardrail"):
+            classify(client, sample_lock, changed, config)
+        assert client.call_count == 0  # refused before any API call
+
+    def test_dated_opus_variant_also_blocked(self):
+        from specguard.models import Config
+
+        with pytest.raises(ValueError, match="blocked"):
+            Config(model="claude-opus-4-8-20260115")
 
 
 class TestFrameworkDetection:

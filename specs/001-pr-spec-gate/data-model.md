@@ -25,7 +25,7 @@ Mirrors product spec §6.5 lock shape (minus `locked_files`, which moved to Conf
 | `watch` | list[glob] | `["README.md", "CLAUDE.md", "AGENTS.md", "ARCHITECTURE.md", "*.kilo", ".specguard/**"]` |
 | `block_threshold` | float 0–1 | `0.75` |
 | `on_error` | `"warn"` \| `"fail"` | `"warn"` |
-| `model` | str | `"claude-opus-4-8"` |
+| `model` | str | `"claude-sonnet-4-6"` — Opus 4.8 is hard-blocked (guardrail) |
 | `max_diff_chars` | int | `30000` |
 
 Missing file → all defaults (lock.json alone is enough to activate plain mode).

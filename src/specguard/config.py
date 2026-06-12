@@ -80,7 +80,13 @@ def parse_config(text: str | None, source: str = CONFIG_PATH) -> Config:
 
     model_override = os.environ.get(MODEL_ENV_VAR)
     if model_override:
-        config = config.model_copy(update={"model": model_override})
+        # Full re-validation (model_copy would skip the model guardrail).
+        try:
+            config = Config.model_validate(
+                {**config.model_dump(), "model": model_override}
+            )
+        except ValidationError as exc:
+            raise ConfigError(f"{MODEL_ENV_VAR}: {_first_error(exc)}") from exc
     return config
 
 

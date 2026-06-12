@@ -118,14 +118,16 @@ rules:
 watch: ["README.md", "CLAUDE.md", "AGENTS.md", "ARCHITECTURE.md", "*.kilo", ".specguard/**"]
 block_threshold: 0.75
 on_error: warn              # vendor outage: pass with a loud warning ("fail" to block)
-model: claude-opus-4-8
+model: claude-sonnet-4-6
 max_diff_chars: 30000
 ```
 
 > You bring your own API key and choose the model — SpecGuard never bills you directly.
 > Set `model:` in `.specguard/config.yml` to use any model you have access to.
-> With the default model expect roughly **$0.03–0.05 per watched file per push**
-> (~3–5K input + ~500 output tokens); lighter models cost proportionally less.
+> With the default `claude-sonnet-4-6` expect roughly **$0.01–0.02 per watched file
+> per push** (~3–5K input + ~500 output tokens); it scored a perfect confusion
+> matrix on the calibration corpus. Note: `claude-opus-4-8` is hard-blocked by a
+> project guardrail (no quality gain on this task at ~6× the cost).
 
 <!-- TODO: blocked-PR screenshot from the sandbox E2E run (T037) -->
 <!-- ![A blocked scope-change PR](assets/blocked-pr.png) -->

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 DEFAULT_WATCH = [
     "README.md",
@@ -17,6 +17,24 @@ DEFAULT_WATCH = [
     "*.kilo",
     ".specguard/**",
 ]
+
+DEFAULT_MODEL = "claude-sonnet-4-6"
+
+# Guardrail: Opus 4.8 must never be invoked — not by default, not via
+# config.yml, not via SPECGUARD_MODEL, not by the eval harness. Calibration
+# showed Sonnet 4.6 classifies the golden corpus identically at ~6x lower
+# cost (research.md R7a), so there is no quality case for the spend.
+BLOCKED_MODEL_MARKERS = ("opus-4-8",)
+
+
+def assert_model_allowed(model: str) -> None:
+    """Raises ValueError when the model is on the blocklist."""
+    for marker in BLOCKED_MODEL_MARKERS:
+        if marker in model:
+            raise ValueError(
+                f"model '{model}' is blocked by project guardrail — "
+                f"use {DEFAULT_MODEL} or another non-Opus-4.8 model"
+            )
 
 
 class ScopeLock(BaseModel):
@@ -35,8 +53,14 @@ class Config(BaseModel):
     watch: list[str] = Field(default_factory=lambda: list(DEFAULT_WATCH))
     block_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
     on_error: Literal["warn", "fail"] = "warn"
-    model: str = "claude-opus-4-8"
+    model: str = DEFAULT_MODEL
     max_diff_chars: int = Field(default=30000, gt=0)
+
+    @field_validator("model")
+    @classmethod
+    def _model_not_blocked(cls, value: str) -> str:
+        assert_model_allowed(value)
+        return value
 
 
 class ScopeChangeRule(BaseModel):

@@ -10,7 +10,7 @@ Owner: `action.yml` (composite) + `src/specguard/ci.py`.
 | `github-token` | no | `${{ github.token }}` | Reviews API reads (`pull-requests: read`) |
 
 > **Model flexibility**: The classifier model is set by the user via `model:` in `.specguard/config.yml`
-> or the `SPECGUARD_MODEL` env var. The default is `claude-opus-4-8` but any model the user
+> or the `SPECGUARD_MODEL` env var. The default is `claude-sonnet-4-6` (Opus 4.8 is hard-blocked by a project guardrail) and any other model the user
 > has API access to can be used. Phase 1 will add a `classifier-provider` input for
 > non-Anthropic providers (OpenAI, Gemini, local endpoints).
 
