@@ -48,11 +48,11 @@ codes mirror ci.py, every output carries the advisory disclosure and baseline.
 **Independent Test**: stage an out-of-scope edit → `specguard check --staged` names the
 same classification/outcome CI would, exits 1; typo fix → one quiet line, exit 0.
 
-- [ ] T008 [US1] Implement `src/specguard/localreport.py`: terminal renderer per `contracts/cli-interface.md` output spec — quiet additive lines, would-block-until-{role} rendering (FR-011), baseline line, advisory notice constant, `--json` shape
-- [ ] T009 [US1] Implement `src/specguard/cli.py`: argparse entry with `check` subcommand (`--staged`, `--base/--head`, `--json`, `--hook` flag parsed but wired in T015); compose localcheck → engine(FakeAdapter-able) → localreport; exit codes 0/1/2 mirroring ci.py (FR-004); missing `ANTHROPIC_API_KEY` → exit 2 with actionable message
-- [ ] T010 [P] [US1] Write `tests/test_localcheck.py`: staged vs worktree vs range resolution in tmp git repos; baseline config wins over locally-edited `.specguard/` (FR-010 regression, local mirror of the Phase 0 E2E finding)
-- [ ] T011 [P] [US1] Write `tests/test_cli.py` check scenarios: exit codes, quiet additive output, disclosure present in human AND json modes (SC-006), no-watched-changes message, non-repo error
-- [ ] T012 [US1] Write `tests/test_parity.py`: corpus-driven — for all 27 golden cases, verdicts via the local path equal verdicts via the ci path for identical ChangedFiles + lock (SC-001, constitution III enforcement test)
+- [X] T008 [US1] Implement `src/specguard/localreport.py`: terminal renderer per `contracts/cli-interface.md` output spec — quiet additive lines, would-block-until-{role} rendering (FR-011), baseline line, advisory notice constant, `--json` shape
+- [X] T009 [US1] Implement `src/specguard/cli.py`: argparse entry with `check` subcommand (`--staged`, `--base/--head`, `--json`, `--hook` flag parsed but wired in T015); compose localcheck → engine(FakeAdapter-able) → localreport; exit codes 0/1/2 mirroring ci.py (FR-004); missing `ANTHROPIC_API_KEY` → exit 2 with actionable message
+- [X] T010 [P] [US1] Write `tests/test_localcheck.py`: staged vs worktree vs range resolution in tmp git repos; baseline config wins over locally-edited `.specguard/` (FR-010 regression, local mirror of the Phase 0 E2E finding)
+- [X] T011 [P] [US1] Write `tests/test_cli.py` check scenarios: exit codes, quiet additive output, disclosure present in human AND json modes (SC-006), no-watched-changes message, non-repo error
+- [X] T012 [US1] Write `tests/test_parity.py`: corpus-driven — for all 27 golden cases, verdicts via the local path equal verdicts via the ci path for identical ChangedFiles + lock (SC-001, constitution III enforcement test)
 
 **Checkpoint**: MVP — local verdict preview with proven gate parity.
 
@@ -65,8 +65,8 @@ same classification/outcome CI would, exits 1; typo fix → one quiet line, exit
 **Independent Test**: in an unconfigured repo, run `specguard init`, answer prompts,
 confirm files validate and `specguard check` runs.
 
-- [ ] T013 [US2] Implement `init` in `src/specguard/cli.py` per `contracts/cli-interface.md`: prompts (goal required, scope lists, optional config/roles/workflow/hook offers), `--force`, `--yes`; every written file round-trips through `config.parse_*` before success; refuse existing lock without `--force` (exit 2)
-- [ ] T014 [P] [US2] Write `tests/test_cli.py` init scenarios: scripted prompts via monkeypatched stdin, generated files load cleanly, overwrite refusal, `--yes` non-interactive path, declined offers reported
+- [X] T013 [US2] Implement `init` in `src/specguard/cli.py` per `contracts/cli-interface.md`: prompts (goal required, scope lists, optional config/roles/workflow/hook offers), `--force`, `--yes`; every written file round-trips through `config.parse_*` before success; refuse existing lock without `--force` (exit 2)
+- [X] T014 [P] [US2] Write `tests/test_cli.py` init scenarios: scripted prompts via monkeypatched stdin, generated files load cleanly, overwrite refusal, `--yes` non-interactive path, declined offers reported
 
 **Checkpoint**: US1 + US2 — the five-minute onboarding loop is real.
 
@@ -79,9 +79,9 @@ confirm files validate and `specguard check` runs.
 **Independent Test**: hook installed, commit an out-of-scope edit → warning shown,
 commit lands; unset the API key → "could not classify" notice, commit lands.
 
-- [ ] T015 [US3] Wire `--hook` mode in `src/specguard/cli.py`: unconditional exit 0 (verdicts, ConfigError, missing key, GitError — everything), silent when no watched files staged, classifier timeout default 30s via `SPECGUARD_HOOK_TIMEOUT` (FR-006)
-- [ ] T016 [US3] Add the `init` hook offer: write executable `.git/hooks/pre-commit` invoking `specguard check --staged --hook`; refuse to clobber an existing hook file (append-with-comment or skip+explain)
-- [ ] T017 [P] [US3] Write hook never-blocks matrix in `tests/test_cli.py`: BLOCK verdict→0, ConfigError→0, missing key→0, timeout→0, nothing-staged→silent 0 (SC-003)
+- [X] T015 [US3] Wire `--hook` mode in `src/specguard/cli.py`: unconditional exit 0 (verdicts, ConfigError, missing key, GitError — everything), silent when no watched files staged, classifier timeout default 30s via `SPECGUARD_HOOK_TIMEOUT` (FR-006)
+- [X] T016 [US3] Add the `init` hook offer: write executable `.git/hooks/pre-commit` invoking `specguard check --staged --hook`; refuse to clobber an existing hook file (append-with-comment or skip+explain)
+- [X] T017 [P] [US3] Write hook never-blocks matrix in `tests/test_cli.py`: BLOCK verdict→0, ConfigError→0, missing key→0, timeout→0, nothing-staged→silent 0 (SC-003)
 
 **Checkpoint**: US1–US3 — commit-time advisory loop closed.
 
@@ -94,9 +94,9 @@ commit lands; unset the API key → "could not classify" notice, commit lands.
 **Independent Test**: invoke `check_proposed_change` with out-of-scope content → full
 SCOPE_CHANGE verdict + advisory flag; non-watched path → `watched: false`, no API call.
 
-- [ ] T018 [US4] Implement `src/specguard/mcp_server.py` per `contracts/mcp-interface.md`: tools `check_proposed_change` (baseline content vs proposed via `diff_from_contents`), `get_scope_lock`, `list_watched_paths`; import-guarded `mcp` SDK with `pip install "specguard-ci[mcp]"` hint; unconfigured/missing-key/ClassifierError → warn-shaped results, blocked model → hard error
-- [ ] T019 [US4] Add `mcp` subcommand to `src/specguard/cli.py` + `__main__` block in `mcp_server.py` (stdio run); exit 2 with install hint when extra absent
-- [ ] T020 [P] [US4] Write `tests/test_mcp_server.py`: tool functions called directly with FakeAdapter in tmp repos — verdict shape, `watched: false` short-circuit (zero adapter calls), `configured: false` hint, advisory field on every result (SC-006)
+- [X] T018 [US4] Implement `src/specguard/mcp_server.py` per `contracts/mcp-interface.md`: tools `check_proposed_change` (baseline content vs proposed via `diff_from_contents`), `get_scope_lock`, `list_watched_paths`; import-guarded `mcp` SDK with `pip install "specguard-ci[mcp]"` hint; unconfigured/missing-key/ClassifierError → warn-shaped results, blocked model → hard error
+- [X] T019 [US4] Add `mcp` subcommand to `src/specguard/cli.py` + `__main__` block in `mcp_server.py` (stdio run); exit 2 with install hint when extra absent
+- [X] T020 [P] [US4] Write `tests/test_mcp_server.py`: tool functions called directly with FakeAdapter in tmp repos — verdict shape, `watched: false` short-circuit (zero adapter calls), `configured: false` hint, advisory field on every result (SC-006)
 
 **Checkpoint**: all four user stories independently functional.
 

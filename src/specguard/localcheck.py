@@ -54,7 +54,7 @@ class BaselineGovernance:
     roles: RolesConfig | None
 
 
-def _require_repo_with_head(repo_root: Path) -> str:
+def require_repo_with_head(repo_root: Path) -> str:
     result = subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"],
         cwd=repo_root,
@@ -93,7 +93,7 @@ def resolve_snapshot(
     watch: list[str],
 ) -> CheckSnapshot:
     """Build the ChangedFile list for the selected snapshot mode."""
-    _require_repo_with_head(repo_root)
+    require_repo_with_head(repo_root)
 
     if base is not None:
         head_ref = head or "HEAD"
