@@ -69,12 +69,16 @@ Approving via GitHub's normal review flow re-evaluates the check automatically â
 ```yaml
 # .github/workflows/specguard.yml
 name: specguard
-on: [pull_request, pull_request_review]   # the review trigger re-evaluates approvals
+on:
+  pull_request:
+  pull_request_review:
+    types: [submitted]
 permissions:
   contents: read
   pull-requests: read
 jobs:
-  specguard:
+  specguard:                               # the required branch-protection check
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -82,6 +86,16 @@ jobs:
       - uses: Sawaiz-zip/spec-guard@v0
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+  reevaluate:                              # an approval re-runs the check in place
+    if: github.event_name == 'pull_request_review' && github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    permissions: {actions: write}
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh api "repos/${{ github.repository }}/actions/workflows/specguard.yml/runs?event=pull_request&head_sha=${{ github.event.pull_request.head.sha }}" --jq '.workflow_runs[0].id // empty')
+          [ -n "$run_id" ] && gh api -X POST "repos/${{ github.repository }}/actions/runs/$run_id/rerun"
 ```
 
 **3.** Set `ANTHROPIC_API_KEY` as a repo secret, then require the `specguard` check under branch protection.

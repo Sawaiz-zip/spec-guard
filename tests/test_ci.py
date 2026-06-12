@@ -108,6 +108,58 @@ class TestSoloModePath:
         assert "91%" in captured.out  # full classification in the annotation
 
 
+class TestGovernanceConfigFromBase:
+    def test_pr_cannot_rewrite_the_rules_it_is_judged_by(self, ci_env, capsys):
+        """Regression (found live in sandbox E2E): a PR adding its author to
+        the architect role must be judged by the BASE roles.yml, not its own."""
+        repo = ci_env.repo
+        repo.write(".specguard/lock.json", LOCK_JSON)
+        repo.write(
+            ".specguard/roles.yml",
+            "roles:\n  architect: [alice]\n"
+            "rules:\n  .specguard/**:\n    edit: architect\n",
+        )
+        base = repo.commit_all("base")
+        # PR author "dev" promotes themself to architect in the PR itself.
+        repo.write(
+            ".specguard/roles.yml",
+            "roles:\n  architect: [alice, dev]\n"
+            "rules:\n  .specguard/**:\n    edit: architect\n",
+        )
+        head = repo.commit_all("self-promotion")
+        ci_env.write_event(load_event("pr_typo_fix.json", base, head))
+        client = FakeAnthropicClient()
+        exit_code = ci.main(client=client)
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "::error file=.specguard/roles.yml::" in captured.out
+        assert client.call_count == 0  # deterministic block, no API call
+
+    def test_pr_cannot_loosen_its_own_scope_lock(self, ci_env, capsys):
+        repo = ci_env.repo
+        repo.write(".specguard/lock.json", LOCK_JSON)
+        repo.write("README.md", "v1\n")
+        base = repo.commit_all("base")
+        # PR rewrites the lock to allow what it adds; base lock must win.
+        repo.write(
+            ".specguard/lock.json",
+            LOCK_JSON.replace('"SaaS pricing", ', ""),
+        )
+        repo.write("README.md", "v1\nPricing: $99/mo\n")
+        head = repo.commit_all("loosen lock + add pricing")
+        ci_env.write_event(load_event("pr_typo_fix.json", base, head))
+        client = FakeAnthropicClient()
+        ci.main(client=client)
+        # The classifier prompt must carry the BASE lock (with SaaS pricing
+        # still out of scope), not the PR's edited one.
+        scope_calls = [
+            c for c in client.calls if c.file_path == "README.md"
+        ]
+        assert scope_calls, "README.md should have been classified"
+        user_msg = scope_calls[0].kwargs["messages"][0]["content"]
+        assert "SaaS pricing" in user_msg
+
+
 class TestForkPath:
     def test_fork_pr_skips_with_warning(self, ci_env, capsys):
         ci_env.write_event(load_event("pr_fork.json", "x", "y"))

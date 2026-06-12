@@ -1,0 +1,288 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - link "Skip to content" [ref=e4] [cursor=pointer]:
+      - /url: "#start-of-content"
+    - banner [ref=e6]:
+      - heading "Navigation Menu" [level=2] [ref=e7]
+      - generic [ref=e9]:
+        - button "Toggle navigation" [ref=e11] [cursor=pointer]
+        - link "Homepage" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - img [ref=e18]
+        - generic [ref=e20]:
+          - link "Sign in" [ref=e21] [cursor=pointer]:
+            - /url: /login?return_to=https%3A%2F%2Fgithub.com%2Fibraheem-111%2Fspecguard-sandbox%2Fpull%2F1%2Ffiles
+          - button "Appearance settings" [ref=e24] [cursor=pointer]:
+            - img
+  - main [ref=e28]:
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e32]:
+          - img [ref=e33]
+          - link "ibraheem-111" [ref=e36] [cursor=pointer]:
+            - /url: /ibraheem-111
+          - generic [ref=e37]: /
+          - strong [ref=e38]:
+            - link "specguard-sandbox" [ref=e39] [cursor=pointer]:
+              - /url: /ibraheem-111/specguard-sandbox
+          - generic [ref=e40]: Public
+        - generic [ref=e41]:
+          - list:
+            - listitem [ref=e42]:
+              - link "You must be signed in to change notification settings" [ref=e43] [cursor=pointer]:
+                - /url: /login?return_to=%2Fibraheem-111%2Fspecguard-sandbox
+                - img [ref=e44]
+                - text: Notifications
+            - listitem [ref=e46]:
+              - link "Fork 0" [ref=e47] [cursor=pointer]:
+                - /url: /login?return_to=%2Fibraheem-111%2Fspecguard-sandbox
+                - img [ref=e48]
+                - text: Fork
+                - generic "0" [ref=e50]
+            - listitem [ref=e51]:
+              - link "You must be signed in to star a repository" [ref=e53] [cursor=pointer]:
+                - /url: /login?return_to=%2Fibraheem-111%2Fspecguard-sandbox
+                - img [ref=e54]
+                - text: Star
+                - generic "0 users starred this repository" [ref=e56]: "0"
+      - navigation "Repository" [ref=e57]:
+        - list [ref=e58]:
+          - listitem [ref=e59]:
+            - link "Code" [ref=e60] [cursor=pointer]:
+              - /url: /ibraheem-111/specguard-sandbox
+              - img [ref=e61]
+              - generic [ref=e63]: Code
+          - listitem [ref=e64]:
+            - link "Issues" [ref=e65] [cursor=pointer]:
+              - /url: /ibraheem-111/specguard-sandbox/issues
+              - img [ref=e66]
+              - generic [ref=e69]: Issues
+          - listitem [ref=e70]:
+            - link "Pull requests 1" [ref=e71] [cursor=pointer]:
+              - /url: /ibraheem-111/specguard-sandbox/pulls
+              - img [ref=e72]
+              - generic [ref=e74]: Pull requests
+              - generic "1" [ref=e75]
+          - listitem [ref=e76]:
+            - link "Actions" [ref=e77] [cursor=pointer]:
+              - /url: /ibraheem-111/specguard-sandbox/actions
+              - img [ref=e78]
+              - generic [ref=e80]: Actions
+          - listitem [ref=e81]:
+            - link "Projects" [ref=e82] [cursor=pointer]:
+              - /url: /ibraheem-111/specguard-sandbox/projects
+              - img [ref=e83]
+              - generic [ref=e85]: Projects
+          - listitem [ref=e86]:
+            - link "Security and quality" [ref=e87] [cursor=pointer]:
+              - /url: /ibraheem-111/specguard-sandbox/security
+              - img [ref=e88]
+              - generic [ref=e90]: Security and quality
+          - listitem [ref=e91]
+        - button "Additional navigation options" [ref=e95] [cursor=pointer]:
+          - img
+    - generic [ref=e101]:
+      - generic [ref=e103]:
+        - generic [ref=e105]:
+          - 'heading "Document SSO integration plans #1" [level=1] [ref=e106]'
+          - group [ref=e108]:
+            - button "New issue" [ref=e109] [cursor=pointer]
+        - generic [ref=e110]:
+          - 'generic "Status: Open" [ref=e112]':
+            - img [ref=e113]
+            - text: Open
+          - generic [ref=e115]:
+            - link "ibraheem-tenexity" [ref=e116] [cursor=pointer]:
+              - /url: /ibraheem-tenexity
+            - text: wants to merge 1 commit into
+            - generic "ibraheem-111/specguard-sandbox:main" [ref=e117]:
+              - link "main" [ref=e118] [cursor=pointer]:
+                - /url: /ibraheem-111/specguard-sandbox/tree/main
+                - generic [ref=e119]: main
+            - text: from
+            - generic "ibraheem-111/specguard-sandbox:add-sso-section" [ref=e120]:
+              - link "add-sso-section" [ref=e121] [cursor=pointer]:
+                - /url: /ibraheem-111/specguard-sandbox/tree/add-sso-section
+                - generic [ref=e122]: add-sso-section
+            - button "Copy" [ref=e125]:
+              - img [ref=e126]
+      - generic [ref=e130]:
+        - generic [ref=e132]: +5 −0
+        - navigation "Pull request tabs" [ref=e139]:
+          - link "Conversation 0" [ref=e140] [cursor=pointer]:
+            - /url: /ibraheem-111/specguard-sandbox/pull/1
+            - img [ref=e141]
+            - text: Conversation
+            - generic "0" [ref=e143]
+          - link "Commits 1" [ref=e144] [cursor=pointer]:
+            - /url: /ibraheem-111/specguard-sandbox/pull/1/commits
+            - img [ref=e145]
+            - text: Commits
+            - generic "1" [ref=e147]
+          - link "Checks 1" [ref=e148] [cursor=pointer]:
+            - /url: /ibraheem-111/specguard-sandbox/pull/1/checks
+            - img [ref=e149]
+            - text: Checks
+            - generic "1" [ref=e151]
+          - link "Files changed 1" [ref=e152] [cursor=pointer]:
+            - /url: /ibraheem-111/specguard-sandbox/pull/1/files
+            - img [ref=e153]
+            - text: Files changed
+            - generic "1" [ref=e155]
+      - generic [ref=e156]:
+        - generic [ref=e158]:
+          - 'generic "Status: Open" [ref=e161]':
+            - img [ref=e162]
+            - text: Open
+          - generic [ref=e164]:
+            - 'heading "Document SSO integration plans #1" [level=1] [ref=e166]':
+              - link "Document SSO integration plans" [ref=e167] [cursor=pointer]:
+                - /url: "#top"
+              - generic [ref=e168]: "#1"
+            - generic [ref=e169]:
+              - group [ref=e170]:
+                - button "Changes from all commits" [ref=e171] [cursor=pointer]:
+                  - text: Changes from
+                  - strong [ref=e172]: all commits
+              - group [ref=e174]:
+                - button "File filter" [ref=e175] [cursor=pointer]:
+                  - strong [ref=e176]: File filter
+              - group [ref=e178]:
+                - button "Conversations" [ref=e179] [cursor=pointer]:
+                  - strong [ref=e180]: Conversations
+              - group [ref=e181]:
+                - button "Jump to" [ref=e182] [cursor=pointer]:
+                  - strong [ref=e183]: Jump to
+              - group [ref=e185]:
+                - button "Diff settings" [ref=e186] [cursor=pointer]:
+                  - img "Diff settings" [ref=e187]
+        - generic [ref=e193]:
+          - generic [ref=e194]:
+            - generic [ref=e195]:
+              - button "Toggle diff contents" [expanded] [ref=e196] [cursor=pointer]:
+                - img [ref=e197]
+              - button "Expand all" [ref=e200] [cursor=pointer]:
+                - img "Expand all" [ref=e201]
+              - generic [ref=e203]: "5 changes: 5 additions & 0 deletions"
+              - generic [ref=e204]: "5"
+              - generic [ref=e210]:
+                - link "README.md" [ref=e211] [cursor=pointer]:
+                  - /url: "#diff-b335630551682c19a781afebcf4d07bf978fb1f8ac04c6bf87428ed5106870f5"
+                - button "Copy" [ref=e213]:
+                  - img [ref=e214]
+            - generic [ref=e219]:
+              - generic [ref=e220]:
+                - button "Display the source diff" [ref=e222] [cursor=pointer]:
+                  - img [ref=e223]
+                - button "Display the rich diff" [ref=e226] [cursor=pointer]:
+                  - img [ref=e227]
+              - group [ref=e229]:
+                - button "Show options" [ref=e230] [cursor=pointer]:
+                  - img "Show options" [ref=e232]
+          - table [ref=e237]:
+            - rowgroup [ref=e238]:
+              - row "Original file line number Diff line number Diff line change" [ref=e239]:
+                - columnheader "Original file line number" [ref=e240]
+                - columnheader "Diff line number" [ref=e241]
+                - columnheader "Diff line change" [ref=e242]
+            - rowgroup [ref=e247]:
+              - row "... ... @@ -1,3 +1,3 @@" [ref=e248]:
+                - cell "..." [ref=e249]
+                - cell "..." [ref=e250]
+                - cell "@@ -1,3 +1,3 @@" [ref=e251]
+              - 'row "1 1 # RecipeBox" [ref=e252]':
+                - cell "1" [ref=e253] [cursor=pointer]
+                - cell "1" [ref=e254] [cursor=pointer]
+                - cell "# RecipeBox" [ref=e255]:
+                  - generic [ref=e256]: "# RecipeBox"
+              - row "2 2" [ref=e257]:
+                - cell "2" [ref=e258] [cursor=pointer]
+                - cell "2" [ref=e259] [cursor=pointer]
+                - cell [ref=e260]
+              - row "3 3 A web application for storing and sharing personal cooking recipes." [ref=e261]:
+                - cell "3" [ref=e262] [cursor=pointer]
+                - cell "3" [ref=e263] [cursor=pointer]
+                - cell "A web application for storing and sharing personal cooking recipes." [ref=e264]:
+                  - generic [ref=e265]: A web application for storing and sharing personal cooking recipes.
+              - row "Expand All @@ -17,3 +17,8 @@" [ref=e266]:
+                - cell "Expand All" [ref=e267] [cursor=pointer]:
+                  - link "Expand All" [ref=e268]:
+                    - /url: "#diff-b335630551682c19a781afebcf4d07bf978fb1f8ac04c6bf87428ed5106870f5"
+                    - img [ref=e269]
+                - cell "@@ -17,3 +17,8 @@" [ref=e271]
+              - row "17 17" [ref=e272]:
+                - cell "17" [ref=e273] [cursor=pointer]
+                - cell "17" [ref=e274] [cursor=pointer]
+                - cell [ref=e275]
+              - row "18 18 Open a PR — every change to this file is reviewed by SpecGuard against the" [ref=e276]:
+                - cell "18" [ref=e277] [cursor=pointer]
+                - cell "18" [ref=e278] [cursor=pointer]
+                - cell "Open a PR — every change to this file is reviewed by SpecGuard against the" [ref=e279]:
+                  - generic [ref=e280]: Open a PR — every change to this file is reviewed by SpecGuard against the
+              - 'row "19 19 locked project scope in `.specguard/lock.json`." [ref=e281]':
+                - cell "19" [ref=e282] [cursor=pointer]
+                - cell "19" [ref=e283] [cursor=pointer]
+                - 'cell "locked project scope in `.specguard/lock.json`." [ref=e284]':
+                  - generic [ref=e285]: "locked project scope in `.specguard/lock.json`."
+              - row "20 +" [ref=e286]:
+                - cell [ref=e287] [cursor=pointer]
+                - cell "20" [ref=e288] [cursor=pointer]
+                - cell "+" [ref=e289]:
+                  - generic: +
+              - 'row "21 + ## SSO integration" [ref=e290]':
+                - cell [ref=e291] [cursor=pointer]
+                - cell "21" [ref=e292] [cursor=pointer]
+                - 'cell "+ ## SSO integration" [ref=e293]':
+                  - generic [ref=e294]: "+ ## SSO integration"
+              - row "22 +" [ref=e295]:
+                - cell [ref=e296] [cursor=pointer]
+                - cell "22" [ref=e297] [cursor=pointer]
+                - cell "+" [ref=e298]:
+                  - generic: +
+              - row "23 + Enterprise users can sign in through their company identity provider. We will" [ref=e299]:
+                - cell [ref=e300] [cursor=pointer]
+                - cell "23" [ref=e301] [cursor=pointer]
+                - cell "+ Enterprise users can sign in through their company identity provider. We will" [ref=e302]:
+                  - generic [ref=e303]: + Enterprise users can sign in through their company identity provider. We will
+              - row "24 + support SAML and OIDC, with Okta and Azure AD as the first launch partners." [ref=e304]:
+                - cell [ref=e305] [cursor=pointer]
+                - cell "24" [ref=e306] [cursor=pointer]
+                - cell "+ support SAML and OIDC, with Okta and Azure AD as the first launch partners." [ref=e307]:
+                  - generic [ref=e308]: + support SAML and OIDC, with Okta and Azure AD as the first launch partners.
+        - img [ref=e309]
+  - contentinfo [ref=e310]:
+    - heading "Footer" [level=2] [ref=e311]
+    - generic [ref=e312]:
+      - generic [ref=e313]:
+        - link "GitHub Homepage" [ref=e314] [cursor=pointer]:
+          - /url: https://github.com
+          - img [ref=e315]
+        - generic [ref=e317]: © 2026 GitHub, Inc.
+      - navigation "Footer" [ref=e318]:
+        - heading "Footer navigation" [level=3] [ref=e319]
+        - list "Footer navigation" [ref=e320]:
+          - listitem [ref=e321]:
+            - link "Terms" [ref=e322] [cursor=pointer]:
+              - /url: https://docs.github.com/site-policy/github-terms/github-terms-of-service
+          - listitem [ref=e323]:
+            - link "Privacy" [ref=e324] [cursor=pointer]:
+              - /url: https://docs.github.com/site-policy/privacy-policies/github-privacy-statement
+          - listitem [ref=e325]:
+            - link "Security" [ref=e326] [cursor=pointer]:
+              - /url: https://github.com/security
+          - listitem [ref=e327]:
+            - link "Status" [ref=e328] [cursor=pointer]:
+              - /url: https://www.githubstatus.com/
+          - listitem [ref=e329]:
+            - link "Community" [ref=e330] [cursor=pointer]:
+              - /url: https://github.community/
+          - listitem [ref=e331]:
+            - link "Docs" [ref=e332] [cursor=pointer]:
+              - /url: https://docs.github.com/
+          - listitem [ref=e333]:
+            - link "Contact" [ref=e334] [cursor=pointer]:
+              - /url: https://support.github.com?tags=dotcom-footer
+          - listitem [ref=e335]:
+            - button "Manage cookies" [ref=e337] [cursor=pointer]
+          - listitem [ref=e338]:
+            - button "Do not share my personal information" [ref=e340] [cursor=pointer]

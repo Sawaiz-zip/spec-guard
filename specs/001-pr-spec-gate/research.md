@@ -121,6 +121,25 @@ flagged in SPECGUARD_PRODUCT_SPEC.md §10 that bear on Phase 0.
   depending on their internals anyway. (This repo itself now uses Spec Kit, which doubles as
   format research for the future adapter.)
 
+## R5a. Sandbox E2E findings (T037) — two amendments
+
+- **Approval re-evaluation (amends D3/R5)**: GitHub branch protection counts
+  every check run named `specguard` on the head commit, so a passing
+  `pull_request_review`-triggered run does NOT unblock the failed
+  `pull_request`-triggered one. Verified live: PR stayed BLOCKED with
+  reviewDecision APPROVED until the original run was re-run. The shipped
+  pattern is therefore: only `pull_request` runs produce the verdict; a
+  lightweight `reevaluate` job on approved reviews re-runs that original run
+  via `POST /actions/runs/{id}/rerun` (needs `actions: write`). UX is
+  unchanged — approve, check re-runs, merge unblocks, zero new commits.
+- **Governance config provenance (security)**: reading `.specguard/` from the
+  Actions checkout let a PR rewrite the rules it was judged by — a PR that
+  added its author to `architect` in `roles.yml` passed the protected-path
+  check against its own edited file (verified live before the fix). `ci.py`
+  now reads lock/config/roles from the PR **base SHA** via `git show`;
+  governance changes take effect only after merging under the old rules.
+  Regression tests: `test_ci.py::TestGovernanceConfigFromBase`.
+
 ## R10. Distribution
 
 - **Decision**: PyPI package `specguard` + composite action referenced as

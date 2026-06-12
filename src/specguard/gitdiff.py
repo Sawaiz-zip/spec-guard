@@ -42,15 +42,20 @@ def _git(repo_root: Path, *args: str) -> str:
     return result.stdout
 
 
-def _show_file(repo_root: Path, sha: str, path: str) -> str:
-    """File content at a commit; empty string when absent (added/deleted side)."""
+def show_file(repo_root: Path, sha: str, path: str) -> str | None:
+    """File content at a commit, or None when the file doesn't exist there.
+
+    Security note: governance config (.specguard/*) MUST be read at the PR
+    base via this function, never from the checkout — the checkout contains
+    the PR's own (attacker-controlled) version of the rules.
+    """
     result = subprocess.run(
         ["git", "show", f"{sha}:{path}"],
         cwd=repo_root,
         capture_output=True,
         text=True,
     )
-    return result.stdout if result.returncode == 0 else ""
+    return result.stdout if result.returncode == 0 else None
 
 
 def watched_changes(
@@ -74,8 +79,12 @@ def watched_changes(
             change = "deleted"
         else:
             change = "modified"
-        old_content = "" if change == "added" else _show_file(repo_root, base_sha, path)
-        new_content = "" if change == "deleted" else _show_file(repo_root, head_sha, path)
+        old_content = (
+            "" if change == "added" else (show_file(repo_root, base_sha, path) or "")
+        )
+        new_content = (
+            "" if change == "deleted" else (show_file(repo_root, head_sha, path) or "")
+        )
         diff = _git(repo_root, "diff", f"{base_sha}...{head_sha}", "--", path)
         changes.append(
             ChangedFile(

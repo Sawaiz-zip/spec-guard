@@ -1,7 +1,13 @@
 """Load and validate `.specguard/` configuration files.
 
-`lock.json` missing → repo is unconfigured (caller decides: setup notice).
-`config.yml` missing → all defaults. `roles.yml` missing → solo/warn mode.
+Parsers take raw text so callers control WHERE config is read from. In CI the
+governance config MUST come from the PR base commit (gitdiff.show_file) — the
+checkout is the PR's own merge result, so reading it would let a PR rewrite
+the rules it is judged by. The path-based loaders exist for trusted contexts
+(tests, future local CLI on a clean working tree).
+
+Missing lock → repo is unconfigured (caller decides: setup notice).
+Missing config.yml → all defaults. Missing roles.yml → solo/warn mode.
 Any parse or validation failure → ConfigError (the check fails loudly, exit 2).
 """
 
@@ -22,6 +28,10 @@ LOCK_FILE = "lock.json"
 CONFIG_FILE = "config.yml"
 ROLES_FILE = "roles.yml"
 
+LOCK_PATH = f"{SPECGUARD_DIR}/{LOCK_FILE}"
+CONFIG_PATH = f"{SPECGUARD_DIR}/{CONFIG_FILE}"
+ROLES_PATH = f"{SPECGUARD_DIR}/{ROLES_FILE}"
+
 MODEL_ENV_VAR = "SPECGUARD_MODEL"
 
 
@@ -38,39 +48,35 @@ def path_matches(path: str, pattern: str) -> bool:
     return fnmatchcase(path, pattern)
 
 
-def is_configured(repo_root: Path) -> bool:
-    """True iff `.specguard/lock.json` exists — the activation switch."""
-    return (repo_root / SPECGUARD_DIR / LOCK_FILE).is_file()
+# ---------------------------------------------------------------------------
+# Text-based parsers (source-agnostic)
+# ---------------------------------------------------------------------------
 
 
-def load_lock(repo_root: Path) -> ScopeLock:
-    lock_path = repo_root / SPECGUARD_DIR / LOCK_FILE
+def parse_lock(text: str, source: str = LOCK_PATH) -> ScopeLock:
     try:
-        raw = json.loads(lock_path.read_text())
-    except FileNotFoundError as exc:
-        raise ConfigError(f"{lock_path}: missing — run setup to create the scope lock") from exc
+        raw = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise ConfigError(f"{lock_path}: invalid JSON — {exc}") from exc
+        raise ConfigError(f"{source}: invalid JSON — {exc}") from exc
     try:
         return ScopeLock.model_validate(raw)
     except ValidationError as exc:
-        raise ConfigError(f"{lock_path}: {_first_error(exc)}") from exc
+        raise ConfigError(f"{source}: {_first_error(exc)}") from exc
 
 
-def load_config(repo_root: Path) -> Config:
-    config_path = repo_root / SPECGUARD_DIR / CONFIG_FILE
+def parse_config(text: str | None, source: str = CONFIG_PATH) -> Config:
     raw: object = {}
-    if config_path.is_file():
+    if text is not None:
         try:
-            raw = yaml.safe_load(config_path.read_text()) or {}
+            raw = yaml.safe_load(text) or {}
         except yaml.YAMLError as exc:
-            raise ConfigError(f"{config_path}: invalid YAML — {exc}") from exc
+            raise ConfigError(f"{source}: invalid YAML — {exc}") from exc
         if not isinstance(raw, dict):
-            raise ConfigError(f"{config_path}: expected a mapping at the top level")
+            raise ConfigError(f"{source}: expected a mapping at the top level")
     try:
         config = Config.model_validate(raw)
     except ValidationError as exc:
-        raise ConfigError(f"{config_path}: {_first_error(exc)}") from exc
+        raise ConfigError(f"{source}: {_first_error(exc)}") from exc
 
     model_override = os.environ.get(MODEL_ENV_VAR)
     if model_override:
@@ -78,19 +84,18 @@ def load_config(repo_root: Path) -> Config:
     return config
 
 
-def load_roles(repo_root: Path) -> RolesConfig | None:
+def parse_roles(text: str | None, source: str = ROLES_PATH) -> RolesConfig | None:
     """None when roles.yml is absent — that absence IS solo/warn mode."""
-    roles_path = repo_root / SPECGUARD_DIR / ROLES_FILE
-    if not roles_path.is_file():
+    if text is None:
         return None
     try:
-        raw = yaml.safe_load(roles_path.read_text()) or {}
+        raw = yaml.safe_load(text) or {}
     except yaml.YAMLError as exc:
-        raise ConfigError(f"{roles_path}: invalid YAML — {exc}") from exc
+        raise ConfigError(f"{source}: invalid YAML — {exc}") from exc
     try:
         roles_config = RolesConfig.model_validate(raw)
     except ValidationError as exc:
-        raise ConfigError(f"{roles_path}: {_first_error(exc)}") from exc
+        raise ConfigError(f"{source}: {_first_error(exc)}") from exc
 
     known = set(roles_config.roles)
     for pattern, rule in roles_config.rules.items():
@@ -100,9 +105,40 @@ def load_roles(repo_root: Path) -> RolesConfig | None:
         for role in referenced:
             if role not in known:
                 raise ConfigError(
-                    f"{roles_path}: rule '{pattern}' references unknown role '{role}'"
+                    f"{source}: rule '{pattern}' references unknown role '{role}'"
                 )
     return roles_config
+
+
+# ---------------------------------------------------------------------------
+# Path-based loaders (trusted working tree only)
+# ---------------------------------------------------------------------------
+
+
+def is_configured(repo_root: Path) -> bool:
+    """True iff `.specguard/lock.json` exists — the activation switch."""
+    return (repo_root / LOCK_PATH).is_file()
+
+
+def load_lock(repo_root: Path) -> ScopeLock:
+    lock_path = repo_root / LOCK_PATH
+    try:
+        text = lock_path.read_text()
+    except FileNotFoundError as exc:
+        raise ConfigError(f"{lock_path}: missing — run setup to create the scope lock") from exc
+    return parse_lock(text, str(lock_path))
+
+
+def load_config(repo_root: Path) -> Config:
+    config_path = repo_root / CONFIG_PATH
+    text = config_path.read_text() if config_path.is_file() else None
+    return parse_config(text, str(config_path))
+
+
+def load_roles(repo_root: Path) -> RolesConfig | None:
+    roles_path = repo_root / ROLES_PATH
+    text = roles_path.read_text() if roles_path.is_file() else None
+    return parse_roles(text, str(roles_path))
 
 
 def detect_framework(repo_root: Path) -> str | None:

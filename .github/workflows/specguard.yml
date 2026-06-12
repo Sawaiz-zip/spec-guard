@@ -1,20 +1,24 @@
 name: specguard
 
 # Dogfood: SpecGuard guards this repository's own spec files.
-# Wired up fully in T035; runs the engine from the working tree until the
-# composite action is published to PyPI (T038), after which this switches to
+# Runs the engine from the working tree until the composite action is
+# published to PyPI (T038), after which the specguard job switches to
 # `uses: <org>/specguard-action@v0`.
 
 on:
   pull_request:
-  pull_request_review:        # approval re-evaluation — required for enforce mode
+  pull_request_review:
+    types: [submitted]
 
 permissions:
   contents: read
   pull-requests: read
 
 jobs:
+  # The required branch-protection check. Only pull_request runs produce it,
+  # so there is exactly one check run named "specguard" per head commit.
   specguard:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,3 +34,27 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
         run: python -m specguard.ci
+
+  # An approval re-runs the original check in place (branch protection counts
+  # every check run named "specguard" on the commit, so a second verdict run
+  # would not unblock a failed first one).
+  reevaluate:
+    if: github.event_name == 'pull_request_review' && github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Re-run SpecGuard for this PR head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run_id=$(gh api "repos/$REPO/actions/workflows/specguard.yml/runs?event=pull_request&head_sha=$HEAD_SHA" \
+                     --jq '.workflow_runs[0].id // empty')
+          if [ -n "$run_id" ]; then
+            gh api -X POST "repos/$REPO/actions/runs/$run_id/rerun"
+            echo "re-ran workflow run $run_id"
+          else
+            echo "no prior specguard run found for $HEAD_SHA — nothing to re-run"
+          fi

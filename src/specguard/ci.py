@@ -16,15 +16,17 @@ from typing import Any
 from specguard import report
 from specguard.approvals import fetch_approvals
 from specguard.config import (
+    CONFIG_PATH,
+    LOCK_PATH,
+    ROLES_PATH,
     ConfigError,
     detect_framework,
-    is_configured,
-    load_config,
-    load_lock,
-    load_roles,
+    parse_config,
+    parse_lock,
+    parse_roles,
 )
 from specguard.engine import evaluate_pr
-from specguard.gitdiff import GitError, watched_changes
+from specguard.gitdiff import GitError, show_file, watched_changes
 from specguard.models import Approval, PRContext
 
 SETUP_HINT = (
@@ -84,13 +86,21 @@ def _run(client: Any | None, repo_root: Path) -> int:
         )
         return 0
 
-    if not is_configured(repo_root):
+    # Governance config is read at the PR BASE, never from the checkout: the
+    # checkout is the PR's own merge result, so trusting it would let any PR
+    # rewrite the rules it is judged by (verified live in sandbox E2E).
+    lock_text = show_file(repo_root, pr.base_sha, LOCK_PATH)
+    if lock_text is None:
         report.notice(SETUP_HINT)
         return 0
 
-    lock = load_lock(repo_root)
-    config = load_config(repo_root)
-    roles_config = load_roles(repo_root)
+    lock = parse_lock(lock_text, f"{pr.base_sha[:7]}:{LOCK_PATH}")
+    config = parse_config(
+        show_file(repo_root, pr.base_sha, CONFIG_PATH), f"{pr.base_sha[:7]}:{CONFIG_PATH}"
+    )
+    roles_config = parse_roles(
+        show_file(repo_root, pr.base_sha, ROLES_PATH), f"{pr.base_sha[:7]}:{ROLES_PATH}"
+    )
 
     framework = detect_framework(repo_root)
     if framework:
