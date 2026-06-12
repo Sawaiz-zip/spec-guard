@@ -33,10 +33,10 @@ start until this phase is complete.
 
 **⚠️ CRITICAL**: No user story work can begin until T004–T007 are done.
 
-- [ ] T004 Implement all Pydantic models in `src/specguard/models.py`: `ScopeLock`, `Config`, `RolesConfig`, `Classification`, `Verdict`, `PRContext`, `Approval` — exact field shapes from `data-model.md`
-- [ ] T005 [P] Implement `src/specguard/config.py`: load and validate `.specguard/config.yml` (with all defaults from `data-model.md`) and `.specguard/lock.json`; raise `ConfigError` on parse failures; implement `detect_framework()` (checks for `.specify/`, `openspec/`, logs only)
-- [ ] T006 [P] Implement `src/specguard/gitdiff.py`: run `git diff --name-only {base}...{head}`, filter by watch-list globs, then `git show` per file for old/new content and unified diff; handle added/deleted/renamed cases
-- [ ] T007 Populate `tests/conftest.py`: `FakeAnthropicClient` that returns canned `Classification` objects keyed by file path and raises configurable errors; sample `ScopeLock`, `Config`, `RolesConfig` fixtures; `pr_event` and `pr_review_event` payload fixtures pointing at `tests/fixtures/events/`
+- [X] T004 Implement all Pydantic models in `src/specguard/models.py`: `ScopeLock`, `Config`, `RolesConfig`, `Classification`, `Verdict`, `PRContext`, `Approval` — exact field shapes from `data-model.md`
+- [X] T005 [P] Implement `src/specguard/config.py`: load and validate `.specguard/config.yml` (with all defaults from `data-model.md`) and `.specguard/lock.json`; raise `ConfigError` on parse failures; implement `detect_framework()` (checks for `.specify/`, `openspec/`, logs only)
+- [X] T006 [P] Implement `src/specguard/gitdiff.py`: run `git diff --name-only {base}...{head}`, filter by watch-list globs, then `git show` per file for old/new content and unified diff; handle added/deleted/renamed cases
+- [X] T007 Populate `tests/conftest.py`: `FakeAnthropicClient` that returns canned `Classification` objects keyed by file path and raises configurable errors; sample `ScopeLock`, `Config`, `RolesConfig` fixtures; `pr_event` and `pr_review_event` payload fixtures pointing at `tests/fixtures/events/`
 
 **Checkpoint**: Foundation ready — all four modules importable, fixtures usable. User story implementation can begin.
 
