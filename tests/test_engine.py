@@ -217,3 +217,102 @@ class TestProtectedViolation:
         )
         assert verdicts[0].outcome == "BLOCK"
         assert verdicts[0].reason == "protected_violation"
+
+
+# ---------------------------------------------------------------------------
+# US4: solo developer warn mode (T027)
+# ---------------------------------------------------------------------------
+
+
+class TestSoloMode:
+    def test_high_confidence_scope_change_warns_not_blocks(
+        self, sample_lock, sample_config, pr_context
+    ):
+        client = FakeAnthropicClient(
+            responses={"README.md": make_classification("SCOPE_CHANGE", 0.90, "HIGH")}
+        )
+        verdicts = evaluate_pr(
+            CHANGED_README, sample_lock, sample_config, None, pr_context,
+            client, no_approvals,
+        )
+        assert verdicts[0].outcome == "WARN"
+        # The full classification still rides along for the annotation.
+        assert verdicts[0].classification is not None
+        assert verdicts[0].classification.confidence == 0.90
+
+    def test_low_confidence_scope_change_stays_warn(
+        self, sample_lock, sample_config, pr_context
+    ):
+        client = FakeAnthropicClient(
+            responses={"README.md": make_classification("SCOPE_CHANGE", 0.50, "MEDIUM")}
+        )
+        verdicts = evaluate_pr(
+            CHANGED_README, sample_lock, sample_config, None, pr_context,
+            client, no_approvals,
+        )
+        assert verdicts[0].outcome == "WARN"
+
+    def test_solo_mode_never_blocks(self, sample_lock, sample_config, pr_context):
+        client = FakeAnthropicClient(
+            responses={"README.md": make_classification("SCOPE_CHANGE", 1.0, "HIGH")}
+        )
+        verdicts = evaluate_pr(
+            CHANGED_README, sample_lock, sample_config, None, pr_context,
+            client, no_approvals,
+        )
+        assert all(v.outcome != "BLOCK" for v in verdicts)
+
+
+# ---------------------------------------------------------------------------
+# Error policy: classifier failures (T028)
+# ---------------------------------------------------------------------------
+
+
+class TestOnErrorPolicy:
+    def test_on_error_warn_passes_with_classifier_error_reason(
+        self, sample_lock, sample_roles, pr_context
+    ):
+        config = Config(on_error="warn")
+        client = FakeAnthropicClient(
+            responses={"README.md": ["bad output", "still bad"]}  # exhausts re-ask
+        )
+        verdicts = evaluate_pr(
+            CHANGED_README, sample_lock, config, sample_roles, pr_context,
+            client, no_approvals,
+        )
+        assert verdicts[0].outcome == "PASS"
+        assert verdicts[0].reason == "classifier_error"
+        assert verdicts[0].classification is None
+
+    def test_on_error_fail_blocks(self, sample_lock, sample_roles, pr_context):
+        config = Config(on_error="fail")
+        client = FakeAnthropicClient(
+            responses={"README.md": RuntimeError("vendor outage")}
+        )
+        verdicts = evaluate_pr(
+            CHANGED_README, sample_lock, config, sample_roles, pr_context,
+            client, no_approvals,
+        )
+        assert verdicts[0].outcome == "BLOCK"
+        assert verdicts[0].reason == "classifier_error"
+
+    def test_error_on_one_file_does_not_poison_others(
+        self, sample_lock, sample_config, sample_roles, pr_context
+    ):
+        changed = [
+            diff_from_contents("README.md", "a\n", "b\n"),
+            diff_from_contents("ARCHITECTURE.md", "c\n", "d\n"),
+        ]
+        client = FakeAnthropicClient(
+            responses={
+                "README.md": RuntimeError("boom"),
+                "ARCHITECTURE.md": make_classification("ADDITIVE", 0.9),
+            }
+        )
+        verdicts = evaluate_pr(
+            changed, sample_lock, sample_config, sample_roles, pr_context,
+            client, no_approvals,
+        )
+        assert verdicts[0].reason == "classifier_error"
+        assert verdicts[1].outcome == "PASS"
+        assert verdicts[1].reason == "additive"

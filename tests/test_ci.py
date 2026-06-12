@@ -88,6 +88,26 @@ class TestScopeChangePath:
         assert "Changes requested" in summary
 
 
+class TestSoloModePath:
+    def test_scope_change_without_roles_warns_and_passes(self, ci_env, capsys):
+        # lock.json present, no roles.yml — US4 independent test.
+        base, head = setup_configured_repo(ci_env, roles=False)
+        ci_env.write_event(load_event("pr_scope_change.json", base, head))
+        client = FakeAnthropicClient(
+            responses={
+                "README.md": make_classification(
+                    "SCOPE_CHANGE", 0.91, "HIGH", ["cloud sync"], "Added cloud sync"
+                )
+            }
+        )
+        exit_code = ci.main(client=client)
+        captured = capsys.readouterr()
+        assert exit_code == 0
+        assert "::error" not in captured.out
+        assert "::warning file=README.md::" in captured.out
+        assert "91%" in captured.out  # full classification in the annotation
+
+
 class TestForkPath:
     def test_fork_pr_skips_with_warning(self, ci_env, capsys):
         ci_env.write_event(load_event("pr_fork.json", "x", "y"))

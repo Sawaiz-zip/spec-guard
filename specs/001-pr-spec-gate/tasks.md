@@ -119,9 +119,9 @@ one `::notice` with setup instructions.
 
 ### Implementation for User Story 4
 
-- [ ] T025 [US4] Extend `src/specguard/engine.py` solo-mode path: when `roles_config` is None (no roles.yml), any SCOPE_CHANGE verdict ≥ block_threshold → `Verdict(outcome=WARN, reason=scope_change_low_confidence)` instead of BLOCK; SCOPE_CHANGE < threshold stays WARN unchanged
-- [ ] T026 [US4] Extend `src/specguard/ci.py` no-config path: if `.specguard/` absent or `lock.json` missing → single `::notice::` with setup URL, exit 0, no file evaluation
-- [ ] T027 [US4] Write `tests/test_engine.py` solo-mode + no-config scenarios: no roles.yml + SCOPE_CHANGE/0.90 → WARN not BLOCK; no lock.json → not_configured verdict
+- [X] T025 [US4] Extend `src/specguard/engine.py` solo-mode path: when `roles_config` is None (no roles.yml), any SCOPE_CHANGE verdict ≥ block_threshold → `Verdict(outcome=WARN, reason=scope_change_low_confidence)` instead of BLOCK; SCOPE_CHANGE < threshold stays WARN unchanged
+- [X] T026 [US4] Extend `src/specguard/ci.py` no-config path: if `.specguard/` absent or `lock.json` missing → single `::notice::` with setup URL, exit 0, no file evaluation
+- [X] T027 [US4] Write `tests/test_engine.py` solo-mode + no-config scenarios: no roles.yml + SCOPE_CHANGE/0.90 → WARN not BLOCK; no lock.json → not_configured verdict
 
 **Checkpoint**: All four user stories independently functional.
 
