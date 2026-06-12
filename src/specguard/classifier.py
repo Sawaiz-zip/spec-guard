@@ -28,7 +28,8 @@ class ClassifierError(Exception):
 class _SupportsParse(Protocol):
     """The slice of the Anthropic client the classifier uses (real or fake)."""
 
-    messages: Any
+    @property
+    def messages(self) -> Any: ...
 
 
 SYSTEM_PROMPT = """\
@@ -226,11 +227,13 @@ class AnthropicAdapter:
         self, lock: ScopeLock, changed: ChangedFile, config: Config
     ) -> Classification:
         assert_model_allowed(config.model)
-        if self._client is None:
+        client: _SupportsParse | None = self._client
+        if client is None:
             import anthropic
 
-            self._client = anthropic.Anthropic(max_retries=2)
-        return classify(self._client, lock, changed, config)
+            client = anthropic.Anthropic(max_retries=2)
+            self._client = client
+        return classify(client, lock, changed, config)
 
 
 def _response_text(response: Any) -> str:
