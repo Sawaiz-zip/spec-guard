@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "specguard-ci"
-version = "0.1.0"
+version = "0.2.0.dev0"
 description = "Semantic governance gate for spec files: classifies PR changes against a locked project goal and scope."
 readme = "README.md"
 license = "MIT"
@@ -25,6 +25,12 @@ dev = [
     "mypy>=1.11",
     "types-PyYAML",
 ]
+mcp = [
+    "mcp>=1.0",
+]
+
+[project.scripts]
+specguard = "specguard.cli:main"
 
 [project.urls]
 Repository = "https://github.com/Sawaiz-zip/spec-guard"

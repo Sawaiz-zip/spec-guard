@@ -19,8 +19,8 @@ SC-001 parity, SC-003 never-blocks, SC-006 disclosure coverage).
 
 **Purpose**: Packaging surface for the new entry points — must complete first.
 
-- [ ] T001 Add `[project.scripts] specguard = "specguard.cli:main"` and `[project.optional-dependencies] mcp = ["mcp>=1.0"]` to `pyproject.toml`; bump version to `0.2.0.dev0`; reinstall editable and confirm `specguard --help` resolves once T009 lands
-- [ ] T002 [P] Create `.pre-commit-hooks.yaml` at repo root per `contracts/cli-interface.md` (id `specguard-check`, entry `specguard check --staged --hook`, `pass_filenames: false`, `always_run: true`)
+- [X] T001 Add `[project.scripts] specguard = "specguard.cli:main"` and `[project.optional-dependencies] mcp = ["mcp>=1.0"]` to `pyproject.toml`; bump version to `0.2.0.dev0`; reinstall editable and confirm `specguard --help` resolves once T009 lands
+- [X] T002 [P] Create `.pre-commit-hooks.yaml` at repo root per `contracts/cli-interface.md` (id `specguard-check`, entry `specguard check --staged --hook`, `pass_filenames: false`, `always_run: true`)
 
 ---
 
@@ -30,11 +30,11 @@ SC-001 parity, SC-003 never-blocks, SC-006 disclosure coverage).
 
 **⚠️ CRITICAL**: No user story work can begin until T003–T007 are done.
 
-- [ ] T003 Add `ClassifierAdapter` protocol + `AnthropicAdapter` to `src/specguard/classifier.py` per `contracts/adapter-protocol.md`: protocol method `classify(lock, changed, config)`; AnthropicAdapter wraps the existing prompt/parse/re-ask logic byte-for-byte (no eval re-run); `assert_model_allowed` enforced at the adapter boundary
-- [ ] T004 Switch `src/specguard/engine.py` `evaluate_pr` to take `adapter: ClassifierAdapter`; update `src/specguard/ci.py` to construct `AnthropicAdapter`; all existing Phase 0 tests must stay green with mechanical-only updates
-- [ ] T005 Add `FakeAdapter` to `tests/conftest.py` (canned Classifications keyed by path, scriptable errors, call counter) alongside the kept `FakeAnthropicClient`
-- [ ] T006 [P] Add `staged_changes()` and `worktree_changes()` to `src/specguard/gitdiff.py` (index content via `git show :path`, worktree via filesystem; reuse the watch-glob filter and ChangedFile shape)
-- [ ] T007 Implement `src/specguard/localcheck.py`: `CheckSnapshot` resolution for worktree/staged/range per `data-model.md`; governance config loaded at `base_ref` via `show_file` + `parse_*` (FR-010); clear errors for non-repo / no-commits states
+- [X] T003 Add `ClassifierAdapter` protocol + `AnthropicAdapter` to `src/specguard/classifier.py` per `contracts/adapter-protocol.md`: protocol method `classify(lock, changed, config)`; AnthropicAdapter wraps the existing prompt/parse/re-ask logic byte-for-byte (no eval re-run); `assert_model_allowed` enforced at the adapter boundary
+- [X] T004 Switch `src/specguard/engine.py` `evaluate_pr` to take `adapter: ClassifierAdapter`; update `src/specguard/ci.py` to construct `AnthropicAdapter`; all existing Phase 0 tests must stay green with mechanical-only updates
+- [X] T005 Add `FakeAdapter` to `tests/conftest.py` (canned Classifications keyed by path, scriptable errors, call counter) alongside the kept `FakeAnthropicClient`
+- [X] T006 [P] Add `staged_changes()` and `worktree_changes()` to `src/specguard/gitdiff.py` (index content via `git show :path`, worktree via filesystem; reuse the watch-glob filter and ChangedFile shape)
+- [X] T007 Implement `src/specguard/localcheck.py`: `CheckSnapshot` resolution for worktree/staged/range per `data-model.md`; governance config loaded at `base_ref` via `show_file` + `parse_*` (FR-010); clear errors for non-repo / no-commits states
 
 **Checkpoint**: adapter seam live, snapshots resolvable, fakes ready.
 
