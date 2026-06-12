@@ -14,7 +14,7 @@ inputs:
       .specguard/config.yml or the SPECGUARD_MODEL env var.
     required: true
   github-token:
-    description: GitHub token for Reviews API reads (pull-requests: read).
+    description: "GitHub token for Reviews API reads (pull-requests: read)."
     required: false
     default: ${{ github.token }}
 

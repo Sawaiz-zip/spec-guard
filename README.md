@@ -69,13 +69,16 @@ Approving via GitHub's normal review flow re-evaluates the check automatically �
 ```yaml
 # .github/workflows/specguard.yml
 name: specguard
-on: [pull_request, pull_request_review]
+on: [pull_request, pull_request_review]   # the review trigger re-evaluates approvals
+permissions:
+  contents: read
+  pull-requests: read
 jobs:
   specguard:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
+        with: {fetch-depth: 0}             # required: base...head history
       - uses: Sawaiz-zip/spec-guard@v0
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -83,8 +86,35 @@ jobs:
 
 **3.** Set `ANTHROPIC_API_KEY` as a repo secret, then require the `specguard` check under branch protection.
 
+That's it for solo use — scope changes now warn on every PR. To make them *block* until an authorized teammate approves, add roles:
+
+```yaml
+# .specguard/roles.yml  (optional — presence switches warn mode to enforce mode)
+roles:
+  architect: [your-github-username]
+rules:
+  ".specguard/**":          # nobody outside the role may touch the lock itself
+    edit: architect
+  "README.md":              # who can approve scope changes per file
+    scope_changes: {approve: architect}
+```
+
+```yaml
+# .specguard/config.yml  (optional — these are the defaults)
+watch: ["README.md", "CLAUDE.md", "AGENTS.md", "ARCHITECTURE.md", "*.kilo", ".specguard/**"]
+block_threshold: 0.75
+on_error: warn              # vendor outage: pass with a loud warning ("fail" to block)
+model: claude-opus-4-8
+max_diff_chars: 30000
+```
+
 > You bring your own API key and choose the model — SpecGuard never bills you directly.
 > Set `model:` in `.specguard/config.yml` to use any model you have access to.
+> With the default model expect roughly **$0.03–0.05 per watched file per push**
+> (~3–5K input + ~500 output tokens); lighter models cost proportionally less.
+
+<!-- TODO: blocked-PR screenshot from the sandbox E2E run (T037) -->
+<!-- ![A blocked scope-change PR](assets/blocked-pr.png) -->
 
 ---
 

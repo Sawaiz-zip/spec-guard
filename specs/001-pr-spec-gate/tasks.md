@@ -131,14 +131,14 @@ one `::notice` with setup instructions.
 
 **Purpose**: Error handling, edge cases, documentation, evaluation, and release. Spans all stories.
 
-- [ ] T028 [P] Error handling in `src/specguard/engine.py` + `src/specguard/ci.py`: `ClassifierError` → `on_error: warn` → PASS + `::warning::` "could not classify"; `on_error: fail` → BLOCK; `ConfigError` anywhere → exit 2 + `::error::` naming file and parse problem
-- [ ] T029 [P] Fork PR detection in `src/specguard/ci.py`: `pull_request.head.repo.fork != base repo` → emit `::warning::` "SpecGuard skipped: secrets unavailable on fork PRs" → exit 0; write `tests/fixtures/events/pr_fork.json`
-- [ ] T030 [P] Large-diff handling in `src/specguard/classifier.py`: diffs > `max_diff_chars` (default 30K) truncated with a `[TRUNCATED]` marker; scope lists never touched; truncation noted in Verdict explanation
-- [ ] T031 [P] Write `tests/test_config.py`: valid config.yml with all defaults; missing keys → defaults applied; malformed YAML → ConfigError; missing lock.json → ConfigError; missing config.yml → defaults only
-- [ ] T032 [P] Write `tests/test_approvals.py`: Reviews API mocked with `httpx`; multiple reviews from same reviewer → latest wins; APPROVED from role member → qualified; APPROVED from non-member → not qualified; CHANGES_REQUESTED → not qualified
-- [ ] T033 Write `README.md`: one-liner positioning, 5-minute install quickstart (config templates + workflow YAML + branch-protection steps), blocked-PR screenshot placeholder, cost disclosure (~$0.03–0.05/file/push), MIT badge
-- [ ] T034 [P] Write `docs/quickstart.md`: mirror of `specs/001-pr-spec-gate/quickstart.md` but user-facing; links to README config templates; covers V1–V5 scenarios from the spec quickstart
-- [ ] T035 Complete `.github/workflows/specguard.yml`: dogfood — watch `SPECGUARD_PRODUCT_SPEC.md`, `README.md`, and `specs/**/*.md`; reference the published action once T017 + T038 are done
+- [X] T028 [P] Error handling in `src/specguard/engine.py` + `src/specguard/ci.py`: `ClassifierError` → `on_error: warn` → PASS + `::warning::` "could not classify"; `on_error: fail` → BLOCK; `ConfigError` anywhere → exit 2 + `::error::` naming file and parse problem
+- [X] T029 [P] Fork PR detection in `src/specguard/ci.py`: `pull_request.head.repo.fork != base repo` → emit `::warning::` "SpecGuard skipped: secrets unavailable on fork PRs" → exit 0; write `tests/fixtures/events/pr_fork.json`
+- [X] T030 [P] Large-diff handling in `src/specguard/classifier.py`: diffs > `max_diff_chars` (default 30K) truncated with a `[TRUNCATED]` marker; scope lists never touched; truncation noted in Verdict explanation
+- [X] T031 [P] Write `tests/test_config.py`: valid config.yml with all defaults; missing keys → defaults applied; malformed YAML → ConfigError; missing lock.json → ConfigError; missing config.yml → defaults only
+- [X] T032 [P] Write `tests/test_approvals.py`: Reviews API mocked with `httpx`; multiple reviews from same reviewer → latest wins; APPROVED from role member → qualified; APPROVED from non-member → not qualified; CHANGES_REQUESTED → not qualified
+- [X] T033 Write `README.md`: one-liner positioning, 5-minute install quickstart (config templates + workflow YAML + branch-protection steps), blocked-PR screenshot placeholder, cost disclosure (~$0.03–0.05/file/push), MIT badge
+- [X] T034 [P] Write `docs/quickstart.md`: mirror of `specs/001-pr-spec-gate/quickstart.md` but user-facing; links to README config templates; covers V1–V5 scenarios from the spec quickstart
+- [X] T035 Complete `.github/workflows/specguard.yml`: dogfood — watch `SPECGUARD_PRODUCT_SPEC.md`, `README.md`, and `specs/**/*.md`; reference the published action once T017 + T038 are done
 - [ ] T036 Run `tests/eval/run_eval.py` against real API; tune system prompt and/or `block_threshold` until SC-001 (0 false BLOCKs on additive corpus) and SC-002 (≥90% recall on scope-change corpus) both pass; document final threshold in `research.md`
 - [ ] T037 Sandbox E2E: create throwaway GitHub repo with config from README templates; execute all 6 scenarios from `quickstart.md V4`; confirm blocked-then-approved-then-green flow works; save blocked-PR screenshot for README
 - [ ] T038 [P] PyPI publish: bump version in `pyproject.toml`; `python -m build && twine upload dist/*`; tag action repo `v0`; pin version in `action.yml`

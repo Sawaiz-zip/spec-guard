@@ -22,7 +22,12 @@ class ApprovalsError(Exception):
     """Reviews API unavailable — callers treat blocked verdicts as unapproved."""
 
 
-def fetch_approvals(repo: str, pr_number: int, token: str) -> list[Approval]:
+def fetch_approvals(
+    repo: str,
+    pr_number: int,
+    token: str,
+    transport: httpx.BaseTransport | None = None,
+) -> list[Approval]:
     """Latest review per reviewer for the PR (paginated, newest state wins)."""
     reviews: list[dict[str, Any]] = []
     url = f"{API_BASE}/repos/{repo}/pulls/{pr_number}/reviews"
@@ -33,7 +38,7 @@ def fetch_approvals(repo: str, pr_number: int, token: str) -> list[Approval]:
     }
     page = 1
     try:
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=30.0, transport=transport) as client:
             while True:
                 response = client.get(
                     url, headers=headers, params={"per_page": 100, "page": page}
