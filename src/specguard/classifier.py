@@ -28,7 +28,8 @@ class ClassifierError(Exception):
 class _SupportsParse(Protocol):
     """The slice of the Anthropic client the classifier uses (real or fake)."""
 
-    messages: Any
+    @property
+    def messages(self) -> Any: ...
 
 
 SYSTEM_PROMPT = """\
@@ -197,6 +198,42 @@ def _attempt(
             },
         ]
         return _attempt(client, config, reask_messages, reasked=True)
+
+
+class ClassifierAdapter(Protocol):
+    """The provider seam (contracts/adapter-protocol.md).
+
+    Adapter obligations: call assert_model_allowed(config.model) before any
+    provider call; never truncate scope lists; return a schema-valid
+    Classification or raise ClassifierError.
+    """
+
+    def classify(
+        self, lock: ScopeLock, changed: ChangedFile, config: Config
+    ) -> Classification: ...
+
+
+class AnthropicAdapter:
+    """The only shipped adapter: wraps the calibrated Phase 0 classify path.
+
+    The prompt and parse/re-ask logic move verbatim — calibration results
+    (001 research.md R7a) remain valid without an eval re-run.
+    """
+
+    def __init__(self, client: _SupportsParse | None = None) -> None:
+        self._client = client
+
+    def classify(
+        self, lock: ScopeLock, changed: ChangedFile, config: Config
+    ) -> Classification:
+        assert_model_allowed(config.model)
+        client: _SupportsParse | None = self._client
+        if client is None:
+            import anthropic
+
+            client = anthropic.Anthropic(max_retries=2)
+            self._client = client
+        return classify(client, lock, changed, config)
 
 
 def _response_text(response: Any) -> str:

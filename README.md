@@ -134,12 +134,58 @@ max_diff_chars: 30000
 
 ---
 
+## Local Tools
+
+Everything the merge gate decides, you can preview on your machine — same engine, same
+verdicts, advisory only.
+
+```bash
+pip install specguard-ci
+
+specguard init     # guided setup: goal, scope, optional roles/workflow/hook
+specguard check    # what would the gate say about my working tree?
+specguard check --staged          # ...about what I'm committing?
+specguard check --base origin/main  # ...about this branch as a PR?
+```
+
+**Pre-commit warnings** (never blocks a commit — enforcement stays at merge time):
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/Sawaiz-zip/spec-guard
+    rev: v0.2.0
+    hooks: [{id: specguard-check}]
+```
+
+**Warn coding agents at write time** — the MCP server lets agents like Claude Code check
+a drafted spec change *before* writing it:
+
+```bash
+pip install "specguard-ci[mcp]"
+```
+
+```json
+// e.g. .mcp.json for Claude Code
+{ "mcpServers": { "specguard": { "command": "specguard", "args": ["mcp"] } } }
+```
+
+Agents get three tools: `check_proposed_change` (full verdict for proposed content),
+`get_scope_lock`, and `list_watched_paths`. Drift prevention moves from "blocked PR" to
+"agent self-corrects mid-draft."
+
+> Local results always carry an advisory notice: nothing local enforces. Governance
+> config is read from your committed baseline — editing your own lock locally doesn't
+> change the verdict your PR will actually get.
+
+---
+
 ## Roadmap
 
 | Phase | Status | What ships |
 |:---:|:---:|:---|
-| **0 — CI Gate** | 🔴 Building | GitHub Action · scope classification · role-based approval · branch protection |
-| **1 — Local Tools** | ⚪ Planned | CLI (`specguard init`, `specguard check`) · pre-commit hook · MCP server |
+| **0 — CI Gate** | 🟢 Shipped | GitHub Action · scope classification · role-based approval · branch protection |
+| **1 — Local Tools** | 🟢 Shipped | CLI (`specguard init`, `specguard check`) · pre-commit hook · MCP server |
 | **2 — GitHub App** | ⚪ Planned | Native Checks API · fork PR support · bot vs human identity · Spec Kit adapter |
 | **3 — Advanced** | ⚪ Planned | Section-level locking · monorepo support · multi-provider classifier |
 

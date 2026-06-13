@@ -105,6 +105,40 @@ def _extract_file_path(kwargs: dict[str, Any]) -> str | None:
     return None
 
 
+class FakeAdapter:
+    """Test double at the ClassifierAdapter seam (contracts/adapter-protocol.md).
+
+    `responses` values: Classification (returned), Exception (raised — use
+    ClassifierError for engine paths, per the adapter contract), or a list of
+    those consumed one per call. Honors the model guardrail like any adapter.
+    """
+
+    def __init__(
+        self,
+        responses: dict[str, Any] | None = None,
+        default: Any | None = None,
+    ) -> None:
+        self.responses = dict(responses or {})
+        self.default = default if default is not None else _additive()
+        self.calls: list[str] = []
+
+    @property
+    def call_count(self) -> int:
+        return len(self.calls)
+
+    def classify(self, lock: Any, changed: Any, config: Any) -> Classification:
+        from specguard.models import assert_model_allowed
+
+        assert_model_allowed(config.model)
+        self.calls.append(changed.path)
+        scripted = self.responses.get(changed.path, self.default)
+        if isinstance(scripted, list):
+            scripted = scripted.pop(0) if scripted else self.default
+        if isinstance(scripted, Exception):
+            raise scripted
+        return scripted  # type: ignore[no-any-return]
+
+
 def _additive() -> Classification:
     return Classification(
         classification="ADDITIVE",

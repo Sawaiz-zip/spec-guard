@@ -1,0 +1,9 @@
+# Pre-commit framework integration. Advisory by design: the hook warns about
+# scope changes in staged spec files but NEVER prevents a commit — merge-time
+# enforcement is SpecGuard's only security layer (constitution I).
+- id: specguard-check
+  name: SpecGuard (advisory scope check)
+  entry: specguard check --staged --hook
+  language: python
+  pass_filenames: false
+  always_run: true
