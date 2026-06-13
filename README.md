@@ -178,7 +178,7 @@ specguard check --base origin/main  # ...about this branch as a PR?
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/Sawaiz-zip/spec-guard
-    rev: v0.2.0
+    rev: v0.3.0
     hooks: [{id: specguard-check}]
 ```
 

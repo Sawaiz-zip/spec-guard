@@ -44,8 +44,8 @@ All tasks complete — this feature was implemented in one pass on branch
 
 ## Phase 5: Release
 
-- [ ] T015 Commit, push branch, open PR into `001-pr-spec-gate`
-- [ ] T016 Publish `specguard-ci 0.3.0`; tag; push `ANTHROPIC_API_KEY` repo secret (user-directed)
+- [X] T015 Commit, push branch, open PR into `001-pr-spec-gate`
+- [X] T016 Publish `specguard-ci 0.3.0`; tag; push `ANTHROPIC_API_KEY` repo secret (user-directed)
 
 **Notes**: 187 tests pass (3.10/3.11/3.12), ruff + strict mypy clean. The system prompt is
 unchanged, so the Anthropic default needs no eval re-run; only the Haiku probe was run (R-H).

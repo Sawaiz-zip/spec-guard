@@ -28,7 +28,7 @@ runs:
       shell: bash
       # Distribution is specguard-ci (PyPI blocked "specguard" as too similar
       # to an unrelated project); the import name is still specguard.
-      run: pip install --quiet specguard-ci==0.2.0
+      run: pip install --quiet specguard-ci==0.3.0
     - name: Run SpecGuard
       shell: bash
       env:
