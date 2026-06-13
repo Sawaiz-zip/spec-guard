@@ -6,7 +6,7 @@ Entities: [data-model.md](data-model.md).
 
 ## Prerequisites
 
-- Python 3.12, `pip install -e ".[dev]"` from repo root
+- Python 3.10+, `pip install -e ".[dev]"` from repo root
 - For real-API scenarios only: `ANTHROPIC_API_KEY` exported
 - For Action scenarios: [`act`](https://github.com/nektos/act) installed, or a sandbox GitHub
   repo with branch protection rights

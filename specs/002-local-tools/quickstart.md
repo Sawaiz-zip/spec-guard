@@ -6,7 +6,7 @@ Runnable scenarios proving the feature end-to-end. Contracts:
 
 ## Prerequisites
 
-- Python 3.12, `pip install -e ".[dev,mcp]"` from repo root
+- Python 3.10+, `pip install -e ".[dev,mcp]"` from repo root
 - Real-classification scenarios only: `ANTHROPIC_API_KEY` exported (V2, V4–V6)
 
 ## V1. Unit suite (no API key) — every merge
