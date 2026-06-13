@@ -1,8 +1,9 @@
-"""Engine verdict-pipeline scenarios via FakeAnthropicClient (no network)."""
+"""Engine verdict-pipeline scenarios via FakeAdapter (no network)."""
 
 from __future__ import annotations
 
-from conftest import FakeAnthropicClient, make_classification
+from conftest import FakeAdapter, make_classification
+from specguard.classifier import ClassifierError
 from specguard.engine import evaluate_pr
 from specguard.gitdiff import diff_from_contents
 from specguard.models import Approval, Config
@@ -23,7 +24,7 @@ class TestAdditive:
     def test_additive_high_confidence_passes(
         self, sample_lock, sample_config, sample_roles, pr_context
     ):
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={"README.md": make_classification("ADDITIVE", 0.95)}
         )
         verdicts = evaluate_pr(
@@ -39,7 +40,7 @@ class TestAdditive:
     def test_additive_low_confidence_still_passes(
         self, sample_lock, sample_config, sample_roles, pr_context
     ):
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={"README.md": make_classification("ADDITIVE", 0.55)}
         )
         verdicts = evaluate_pr(
@@ -55,7 +56,7 @@ class TestAdditive:
     ):
         verdicts = evaluate_pr(
             CHANGED_README, sample_lock, sample_config, None, pr_context,
-            FakeAnthropicClient(), no_approvals,
+            FakeAdapter(), no_approvals,
         )
         assert verdicts[0].outcome == "PASS"
         assert verdicts[0].reason == "additive"
@@ -69,7 +70,7 @@ class TestAdditive:
         ]
         verdicts = evaluate_pr(
             changed, sample_lock, sample_config, sample_roles, pr_context,
-            FakeAnthropicClient(), no_approvals,
+            FakeAdapter(), no_approvals,
         )
         assert [v.file for v in verdicts] == ["README.md", "ARCHITECTURE.md"]
         assert all(v.outcome == "PASS" for v in verdicts)
@@ -84,7 +85,7 @@ class TestScopeChange:
     def test_high_confidence_unapproved_blocks(
         self, sample_lock, sample_config, sample_roles, pr_context
     ):
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={
                 "README.md": make_classification(
                     "SCOPE_CHANGE", 0.94, "HIGH", ["SaaS pricing"], "Added pricing"
@@ -102,7 +103,7 @@ class TestScopeChange:
     def test_qualified_approval_flips_to_pass(
         self, sample_lock, sample_config, sample_roles, pr_context
     ):
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={"README.md": make_classification("SCOPE_CHANGE", 0.94, "HIGH")}
         )
         verdicts = evaluate_pr(
@@ -116,7 +117,7 @@ class TestScopeChange:
     def test_unqualified_approval_still_blocks(
         self, sample_lock, sample_config, sample_roles, pr_context
     ):
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={"README.md": make_classification("SCOPE_CHANGE", 0.94, "HIGH")}
         )
         verdicts = evaluate_pr(
@@ -129,7 +130,7 @@ class TestScopeChange:
     def test_below_threshold_warns_never_blocks(
         self, sample_lock, sample_config, sample_roles, pr_context
     ):
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={"README.md": make_classification("SCOPE_CHANGE", 0.60, "MEDIUM")}
         )
         verdicts = evaluate_pr(
@@ -143,7 +144,7 @@ class TestScopeChange:
         self, sample_lock, sample_roles, pr_context
     ):
         config = Config(block_threshold=0.9)
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={"README.md": make_classification("SCOPE_CHANGE", 0.85, "HIGH")}
         )
         verdicts = evaluate_pr(
@@ -158,7 +159,7 @@ class TestScopeChange:
         # ARCHITECTURE.md has no scope_changes rule in sample_roles: blocking
         # would leave no approval escape hatch, so the engine warns.
         changed = [diff_from_contents("ARCHITECTURE.md", "a\n", "b\n")]
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={"ARCHITECTURE.md": make_classification("SCOPE_CHANGE", 0.95, "HIGH")}
         )
         verdicts = evaluate_pr(
@@ -179,7 +180,7 @@ class TestProtectedViolation:
     ):
         # pr_context.author_login == "dev", not in the architect role.
         changed = [diff_from_contents(".specguard/roles.yml", "a\n", "b\n")]
-        client = FakeAnthropicClient()
+        client = FakeAdapter()
         verdicts = evaluate_pr(
             changed, sample_lock, sample_config, sample_roles, pr_context,
             client, no_approvals,
@@ -194,7 +195,7 @@ class TestProtectedViolation:
     ):
         pr = pr_context.model_copy(update={"author_login": "alice"})  # architect
         changed = [diff_from_contents(".specguard/roles.yml", "a\n", "b\n")]
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={".specguard/roles.yml": make_classification("ADDITIVE", 0.9)}
         )
         verdicts = evaluate_pr(
@@ -212,7 +213,7 @@ class TestProtectedViolation:
         changed = [diff_from_contents(".specguard/config.yml", "a\n", "b\n")]
         verdicts = evaluate_pr(
             changed, sample_lock, sample_config, sample_roles, pr_context,
-            FakeAnthropicClient(),
+            FakeAdapter(),
             lambda: [Approval(reviewer_login="alice", state="APPROVED")],
         )
         assert verdicts[0].outcome == "BLOCK"
@@ -228,7 +229,7 @@ class TestSoloMode:
     def test_high_confidence_scope_change_warns_not_blocks(
         self, sample_lock, sample_config, pr_context
     ):
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={"README.md": make_classification("SCOPE_CHANGE", 0.90, "HIGH")}
         )
         verdicts = evaluate_pr(
@@ -243,7 +244,7 @@ class TestSoloMode:
     def test_low_confidence_scope_change_stays_warn(
         self, sample_lock, sample_config, pr_context
     ):
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={"README.md": make_classification("SCOPE_CHANGE", 0.50, "MEDIUM")}
         )
         verdicts = evaluate_pr(
@@ -253,7 +254,7 @@ class TestSoloMode:
         assert verdicts[0].outcome == "WARN"
 
     def test_solo_mode_never_blocks(self, sample_lock, sample_config, pr_context):
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={"README.md": make_classification("SCOPE_CHANGE", 1.0, "HIGH")}
         )
         verdicts = evaluate_pr(
@@ -273,8 +274,8 @@ class TestOnErrorPolicy:
         self, sample_lock, sample_roles, pr_context
     ):
         config = Config(on_error="warn")
-        client = FakeAnthropicClient(
-            responses={"README.md": ["bad output", "still bad"]}  # exhausts re-ask
+        client = FakeAdapter(
+            responses={"README.md": ClassifierError("schema exhausted")}
         )
         verdicts = evaluate_pr(
             CHANGED_README, sample_lock, config, sample_roles, pr_context,
@@ -286,8 +287,8 @@ class TestOnErrorPolicy:
 
     def test_on_error_fail_blocks(self, sample_lock, sample_roles, pr_context):
         config = Config(on_error="fail")
-        client = FakeAnthropicClient(
-            responses={"README.md": RuntimeError("vendor outage")}
+        client = FakeAdapter(
+            responses={"README.md": ClassifierError("vendor outage")}
         )
         verdicts = evaluate_pr(
             CHANGED_README, sample_lock, config, sample_roles, pr_context,
@@ -303,9 +304,9 @@ class TestOnErrorPolicy:
             diff_from_contents("README.md", "a\n", "b\n"),
             diff_from_contents("ARCHITECTURE.md", "c\n", "d\n"),
         ]
-        client = FakeAnthropicClient(
+        client = FakeAdapter(
             responses={
-                "README.md": RuntimeError("boom"),
+                "README.md": ClassifierError("boom"),
                 "ARCHITECTURE.md": make_classification("ADDITIVE", 0.9),
             }
         )

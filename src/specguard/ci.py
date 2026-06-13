@@ -15,6 +15,7 @@ from typing import Any
 
 from specguard import report
 from specguard.approvals import fetch_approvals
+from specguard.classifier import AnthropicAdapter
 from specguard.config import (
     CONFIG_PATH,
     LOCK_PATH,
@@ -28,6 +29,7 @@ from specguard.config import (
 from specguard.engine import evaluate_pr
 from specguard.gitdiff import GitError, show_file, watched_changes
 from specguard.models import Approval, PRContext
+from specguard.providers import make_adapter
 
 SETUP_HINT = (
     "SpecGuard is installed but this repository has no .specguard/lock.json — "
@@ -113,17 +115,16 @@ def _run(client: Any | None, repo_root: Path) -> int:
         report.notice("SpecGuard: no watched spec files changed in this PR")
         return 0
 
-    if client is None:
-        import anthropic
-
-        client = anthropic.Anthropic(max_retries=2)
+    # Test injection keeps the Anthropic SDK seam; real runs pick the backend
+    # declared by config.provider (anthropic/openai/gemini/openrouter).
+    adapter = AnthropicAdapter(client=client) if client is not None else make_adapter(config)
 
     token = os.environ.get("GITHUB_TOKEN", "")
 
     def get_approvals() -> list[Approval]:
         return fetch_approvals(pr.repo, pr.pr_number, token)
 
-    verdicts = evaluate_pr(changed, lock, config, roles_config, pr, client, get_approvals)
+    verdicts = evaluate_pr(changed, lock, config, roles_config, pr, adapter, get_approvals)
 
     report.emit_annotations(verdicts, pr, roles_config)
     report.write_summary(verdicts, pr, roles_config)

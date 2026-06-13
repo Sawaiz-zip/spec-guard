@@ -20,10 +20,9 @@ produces and differs only in formatting.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
 
 from specguard.approvals import ApprovalsError, has_qualified_approval
-from specguard.classifier import ClassifierError, classify
+from specguard.classifier import ClassifierAdapter, ClassifierError
 from specguard.gitdiff import ChangedFile
 from specguard.models import (
     Approval,
@@ -43,7 +42,7 @@ def evaluate_pr(
     config: Config,
     roles_config: RolesConfig | None,
     pr: PRContext,
-    client: Any,
+    adapter: ClassifierAdapter,
     get_approvals: Callable[[], list[Approval]],
 ) -> list[Verdict]:
     """Produce one Verdict per watched changed file. Stateless and idempotent."""
@@ -63,7 +62,7 @@ def evaluate_pr(
     for changed_file in changed:
         verdicts.append(
             _evaluate_file(
-                changed_file, lock, config, roles_config, pr, client, approvals_once
+                changed_file, lock, config, roles_config, pr, adapter, approvals_once
             )
         )
     return verdicts
@@ -75,7 +74,7 @@ def _evaluate_file(
     config: Config,
     roles_config: RolesConfig | None,
     pr: PRContext,
-    client: Any,
+    adapter: ClassifierAdapter,
     approvals_once: Callable[[], list[Approval]],
 ) -> Verdict:
     # Deterministic hard block (constitution V): path rule + platform identity,
@@ -91,7 +90,7 @@ def _evaluate_file(
         )
 
     try:
-        classification = classify(client, lock, changed_file, config)
+        classification = adapter.classify(lock, changed_file, config)
     except ClassifierError:
         outcome = "PASS" if config.on_error == "warn" else "BLOCK"
         return Verdict(

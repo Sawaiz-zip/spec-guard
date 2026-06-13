@@ -118,19 +118,89 @@ rules:
 watch: ["README.md", "CLAUDE.md", "AGENTS.md", "ARCHITECTURE.md", "*.kilo", ".specguard/**"]
 block_threshold: 0.75
 on_error: warn              # vendor outage: pass with a loud warning ("fail" to block)
+provider: anthropic         # anthropic | openai | gemini | openrouter
 model: claude-sonnet-4-6
 max_diff_chars: 30000
 ```
 
 > You bring your own API key and choose the model — SpecGuard never bills you directly.
-> Set `model:` in `.specguard/config.yml` to use any model you have access to.
 > With the default `claude-sonnet-4-6` expect roughly **$0.01–0.02 per watched file
 > per push** (~3–5K input + ~500 output tokens); it scored a perfect confusion
-> matrix on the calibration corpus. Note: `claude-opus-4-8` is hard-blocked by a
-> project guardrail (no quality gain on this task at ~6× the cost).
+> matrix on the calibration corpus. `claude-opus-4-8` is hard-blocked by a project
+> guardrail (no quality gain on this task at ~6× the cost).
+
+### Choose your LLM provider
+
+SpecGuard classifies through one shared engine behind a provider seam — pick the backend you
+already pay for. Anthropic ships in the base install; the rest are one extra away:
+
+| `provider:` | install | API key env var | example `model:` |
+|---|---|---|---|
+| `anthropic` *(default)* | `pip install specguard-ci` | `ANTHROPIC_API_KEY` | `claude-sonnet-4-6` |
+| `openai` | `pip install "specguard-ci[openai]"` | `OPENAI_API_KEY` | `gpt-4o-2024-11-20` |
+| `gemini` | `pip install "specguard-ci[gemini]"` | `GEMINI_API_KEY` | `gemini-2.0-flash` |
+| `openrouter` | `pip install "specguard-ci[openai]"` | `OPENROUTER_API_KEY` | `anthropic/claude-3.5-sonnet` |
+
+Non-Anthropic providers require an explicit `model:`. Only Anthropic + Sonnet 4.6 is
+calibration-verified against the golden corpus; other backends work but are unvalidated until
+you run them through `tests/eval/run_eval.py`. `claude-haiku-4-5` is selectable and ~3× cheaper
+but missed the 90% recall gate (83%), so it stays opt-in, not the default.
+
+> **Python**: the package installs on **Python 3.10+**. The CI Action provisions its own
+> Python on the runner, so the gate works for repos in *any* language; only the local tools
+> need a 3.10+ interpreter on your machine.
 
 <!-- TODO: blocked-PR screenshot from the sandbox E2E run (T037) -->
 <!-- ![A blocked scope-change PR](assets/blocked-pr.png) -->
+
+<!-- TODO: blocked-PR screenshot from the sandbox E2E run (T037) -->
+<!-- ![A blocked scope-change PR](assets/blocked-pr.png) -->
+
+---
+
+## Local Tools
+
+Everything the merge gate decides, you can preview on your machine — same engine, same
+verdicts, advisory only.
+
+```bash
+pip install specguard-ci
+
+specguard init     # guided setup: goal, scope, optional roles/workflow/hook
+specguard check    # what would the gate say about my working tree?
+specguard check --staged          # ...about what I'm committing?
+specguard check --base origin/main  # ...about this branch as a PR?
+```
+
+**Pre-commit warnings** (never blocks a commit — enforcement stays at merge time):
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/Sawaiz-zip/spec-guard
+    rev: v0.2.0
+    hooks: [{id: specguard-check}]
+```
+
+**Warn coding agents at write time** — the MCP server lets agents like Claude Code check
+a drafted spec change *before* writing it:
+
+```bash
+pip install "specguard-ci[mcp]"
+```
+
+```json
+// e.g. .mcp.json for Claude Code
+{ "mcpServers": { "specguard": { "command": "specguard", "args": ["mcp"] } } }
+```
+
+Agents get three tools: `check_proposed_change` (full verdict for proposed content),
+`get_scope_lock`, and `list_watched_paths`. Drift prevention moves from "blocked PR" to
+"agent self-corrects mid-draft."
+
+> Local results always carry an advisory notice: nothing local enforces. Governance
+> config is read from your committed baseline — editing your own lock locally doesn't
+> change the verdict your PR will actually get.
 
 ---
 
@@ -138,8 +208,8 @@ max_diff_chars: 30000
 
 | Phase | Status | What ships |
 |:---:|:---:|:---|
-| **0 — CI Gate** | 🔴 Building | GitHub Action · scope classification · role-based approval · branch protection |
-| **1 — Local Tools** | ⚪ Planned | CLI (`specguard init`, `specguard check`) · pre-commit hook · MCP server |
+| **0 — CI Gate** | 🟢 Shipped | GitHub Action · scope classification · role-based approval · branch protection |
+| **1 — Local Tools** | 🟢 Shipped | CLI (`specguard init`, `specguard check`) · pre-commit hook · MCP server |
 | **2 — GitHub App** | ⚪ Planned | Native Checks API · fork PR support · bot vs human identity · Spec Kit adapter |
 | **3 — Advanced** | ⚪ Planned | Section-level locking · monorepo support · multi-provider classifier |
 

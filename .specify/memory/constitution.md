@@ -1,14 +1,13 @@
 <!--
 Sync Impact Report
-- Version change: (template) → 1.0.0
-- Modified principles: n/a (initial ratification)
-- Added sections: Core Principles (I–VI), Additional Constraints & Scope Boundaries,
-  Development Workflow & Quality Gates, Governance
-- Removed sections: none
-- Templates requiring updates:
-  ✅ .specify/templates/plan-template.md — generic Constitution Check gate; no edit required
-  ✅ .specify/templates/spec-template.md — no constitution-dependent sections; no edit required
-  ✅ .specify/templates/tasks-template.md — no constitution-dependent sections; no edit required
+- Version change: 1.0.0 → 1.1.0
+- Modified principles: n/a (wording of constraints expanded, no principle removed/redefined)
+- Modified sections: Additional Constraints (Python floor ≥3.12 → ≥3.10; classifier is now
+  provider-agnostic — Anthropic default, OpenAI/Gemini/OpenRouter selectable); Development
+  Workflow (LLM-agnostic phrasing; a model/provider must pass the eval gate before becoming a
+  documented default)
+- Rationale: feature 003-provider-agnostic broadened the Python floor and the classifier seam
+- Templates requiring updates: none
 - Follow-up TODOs: none
 -->
 
@@ -75,8 +74,11 @@ the terminal. No new surface to learn, no new login to manage.*
 
 ## Additional Constraints & Scope Boundaries
 
-- Language: Python ≥ 3.12. License: MIT. Classifier: independent Claude API call — never the
-  same agent session being governed.
+- Language: Python ≥ 3.10. License: MIT. Classifier: an independent LLM API call — never the
+  same agent session being governed. The provider is pluggable behind one output contract
+  (Anthropic by default; OpenAI, Gemini, and OpenRouter selectable via `provider:` in
+  config). The Opus 4.8 guardrail applies on every provider path. A provider/model combination
+  MUST pass the golden-corpus eval gate before it may be a documented default.
 - The classifier prompt sends goal + scope lists in full; file content is diff-focused and
   truncatable, scope lists are not.
 - Explicitly out of scope for the product (decided, not deferred): web dashboard; own spec
@@ -87,15 +89,16 @@ the terminal. No new surface to learn, no new login to manage.*
 
 ## Development Workflow & Quality Gates
 
-- CI tests MUST run without a live Claude API key (mocked client); classifier behavior is
+- CI tests MUST run without a live LLM API key (mocked adapter); classifier behavior is
   validated separately by a real-API eval harness run manually.
-- Release gate: zero false BLOCKs on the ADDITIVE golden corpus at default thresholds. A
-  prompt or threshold change MUST re-run the eval harness before merge.
+- Release gate: zero false BLOCKs on the ADDITIVE golden corpus at default thresholds, and
+  ≥90% recall on the SCOPE_CHANGE corpus. A prompt or threshold change MUST re-run the eval
+  harness before merge; so MUST any change to the default provider/model.
 - SpecGuard MUST dogfood itself: this repository's own spec files are guarded by the
   published action from the first working build onward.
 - Configuration errors (malformed roles.yml/config.yml/lock.json) MUST fail loudly; vendor
-  outages (Claude API unavailable) default to fail-open with a visible warning, configurable
-  to fail-closed per repo.
+  outages (the configured provider unavailable) default to fail-open with a visible warning,
+  configurable to fail-closed per repo.
 
 ## Governance
 
@@ -106,4 +109,4 @@ expanded guidance; PATCH: clarification/wording), and (c) records the change in 
 Impact Report comment. All PRs and reviews MUST verify compliance with Principles I–VI;
 deviations require explicit justification in the plan's Complexity Tracking section.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-10 | **Last Amended**: 2026-06-10
+**Version**: 1.1.0 | **Ratified**: 2026-06-10 | **Last Amended**: 2026-06-12

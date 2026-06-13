@@ -28,7 +28,8 @@ class ClassifierError(Exception):
 class _SupportsParse(Protocol):
     """The slice of the Anthropic client the classifier uses (real or fake)."""
 
-    messages: Any
+    @property
+    def messages(self) -> Any: ...
 
 
 SYSTEM_PROMPT = """\
@@ -60,6 +61,14 @@ out-of-scope subjects it introduces; empty for ADDITIVE changes.
 WHOLE_FILE_LIMIT = 4000
 HUNK_CONTEXT_LIMIT = 2000
 TRUNCATION_MARKER = "[TRUNCATED — diff exceeded max_diff_chars]"
+
+# Models that reject the `thinking` parameter (the Haiku tier). Substring match,
+# consistent with how the Opus guardrail is enforced.
+_NO_THINKING_MARKERS = ("haiku",)
+
+
+def _supports_adaptive_thinking(model: str) -> bool:
+    return not any(marker in model for marker in _NO_THINKING_MARKERS)
 
 
 def build_user_message(
@@ -155,11 +164,16 @@ def _attempt(
     messages: list[dict[str, Any]],
     reasked: bool = False,
 ) -> Classification | None:
+    # Adaptive thinking lifts classification quality but is not available on
+    # every model (Haiku rejects it). Send it only where supported so the
+    # default model can be a lighter one.
+    extra: dict[str, Any] = {}
+    if _supports_adaptive_thinking(config.model):
+        extra["thinking"] = {"type": "adaptive"}
     try:
         response = client.messages.parse(
             model=config.model,
             max_tokens=4000,
-            thinking={"type": "adaptive"},
             system=[
                 {
                     "type": "text",
@@ -169,6 +183,7 @@ def _attempt(
             ],
             messages=messages,
             output_format=Classification,
+            **extra,
         )
     except Exception as exc:  # SDK already auto-retried 429/5xx (max_retries)
         raise ClassifierError(f"classifier call failed: {exc}") from exc
@@ -197,6 +212,42 @@ def _attempt(
             },
         ]
         return _attempt(client, config, reask_messages, reasked=True)
+
+
+class ClassifierAdapter(Protocol):
+    """The provider seam (contracts/adapter-protocol.md).
+
+    Adapter obligations: call assert_model_allowed(config.model) before any
+    provider call; never truncate scope lists; return a schema-valid
+    Classification or raise ClassifierError.
+    """
+
+    def classify(
+        self, lock: ScopeLock, changed: ChangedFile, config: Config
+    ) -> Classification: ...
+
+
+class AnthropicAdapter:
+    """The only shipped adapter: wraps the calibrated Phase 0 classify path.
+
+    The prompt and parse/re-ask logic move verbatim — calibration results
+    (001 research.md R7a) remain valid without an eval re-run.
+    """
+
+    def __init__(self, client: _SupportsParse | None = None) -> None:
+        self._client = client
+
+    def classify(
+        self, lock: ScopeLock, changed: ChangedFile, config: Config
+    ) -> Classification:
+        assert_model_allowed(config.model)
+        client: _SupportsParse | None = self._client
+        if client is None:
+            import anthropic
+
+            client = anthropic.Anthropic(max_retries=2)
+            self._client = client
+        return classify(client, lock, changed, config)
 
 
 def _response_text(response: Any) -> str:

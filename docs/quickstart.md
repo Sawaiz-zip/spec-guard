@@ -70,3 +70,52 @@ Then run these scenarios in order:
 This repository guards its own spec files: `.github/workflows/specguard.yml`
 watches `README.md`, `SPECGUARD_PRODUCT_SPEC.md`, and `specs/**/*.md` against
 the scope locked in `.specguard/lock.json`.
+
+---
+
+# Local Tools (Phase 1)
+
+## L1. Local check parity
+
+```bash
+pytest tests/test_parity.py
+```
+
+**Expected**: every golden-corpus case produces identical classification and
+outcome through the local path and the CI path (SC-001).
+
+## L2. Init to first check (under 5 minutes)
+
+```bash
+mkdir demo && cd demo && git init -b main
+specguard init            # answer the prompts
+git add -A && git commit -m "specguard setup"
+# edit a watched file, then:
+specguard check
+```
+
+**Expected**: verdicts plus the advisory notice and the baseline used. Exit
+codes mirror the gate: 0 nothing would block, 1 would block, 2 config error.
+
+## L3. Hook never blocks
+
+Install via `specguard init` (plain git hook) or the pre-commit framework
+(see README). Commit an out-of-scope spec edit → warning prints, **commit
+succeeds**. Unset `ANTHROPIC_API_KEY` → "could not classify" notice, commit
+succeeds. Non-spec commits → no output, no delay.
+
+## L4. MCP write-time check
+
+```bash
+pip install "specguard-ci[mcp]"
+specguard mcp     # connect an MCP client over stdio (see README for config)
+```
+
+Invoke `specguard_check_proposed_change` with drafted content for a watched
+file → full verdict with `advisory: true` before anything is committed.
+
+## L5. Baseline trust (local mirror of FR-010)
+
+Locally edit `.specguard/lock.json` to allow a currently out-of-scope topic,
+add that topic to README, run `specguard check` → still SCOPE CHANGE: config
+is read at the committed baseline, which the output names.
