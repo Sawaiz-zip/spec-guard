@@ -6,7 +6,7 @@
 <br/>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-6366f1?style=flat-square)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Phase%200%20MVP-ef4444?style=flat-square)]()
+[![Status](https://img.shields.io/badge/Status-v0.2.0%20Shipped-22c55e?style=flat-square)]()
 [![Built with Spec Kit](https://img.shields.io/badge/Built%20with-Spec%20Kit-fbbf24?style=flat-square&logoColor=black)](https://github.com/github/spec-kit)
 
 </div>
@@ -129,8 +129,8 @@ max_diff_chars: 30000
 > matrix on the calibration corpus. Note: `claude-opus-4-8` is hard-blocked by a
 > project guardrail (no quality gain on this task at ~6× the cost).
 
-<!-- TODO: blocked-PR screenshot from the sandbox E2E run (T037) -->
-<!-- ![A blocked scope-change PR](assets/blocked-pr.png) -->
+![A blocked scope-change PR (files view)](blocked-pr-files.png)
+![A blocked scope-change PR (full view)](blocked-pr-full.png)
 
 ---
 

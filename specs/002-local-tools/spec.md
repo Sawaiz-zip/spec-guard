@@ -4,7 +4,9 @@
 
 **Created**: 2026-06-12
 
-**Status**: Draft
+**Completed**: 2026-06-13
+
+**Status**: Implemented
 
 **Input**: User description: "Phase 1 — Local Tools. Bring SpecGuard's existing merge-time verdict pipeline to the developer's machine as advisory (never security-boundary) surfaces: a CLI (`specguard init`, `specguard check`), a pre-commit hook that warns and never blocks, an MCP server that warns coding agents at write time, and a provider-adapter seam for non-Anthropic classifiers."
 
