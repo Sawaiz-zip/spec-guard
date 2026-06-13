@@ -1,0 +1,10 @@
+# Dogfood: SpecGuard guards its own spec files.
+watch:
+  - "README.md"
+  - "CLAUDE.md"
+  - "SPECGUARD_PRODUCT_SPEC.md"
+  - "specs/**/*.md"
+  - ".specguard/**"
+block_threshold: 0.75
+on_error: warn
+model: claude-sonnet-4-6

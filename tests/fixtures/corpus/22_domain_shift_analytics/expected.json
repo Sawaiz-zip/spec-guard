@@ -1,0 +1,4 @@
+{
+  "classification": "SCOPE_CHANGE",
+  "description": "Domain shift: batch ETL pipeline becomes a real-time analytics platform."
+}

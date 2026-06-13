@@ -1,0 +1,17 @@
+{
+  "goal": "JWT-based authentication service with OAuth2 social login for the Acme web app",
+  "scope_in": [
+    "JWT issuance and validation",
+    "Google and GitHub OAuth login",
+    "session management",
+    "password reset flows"
+  ],
+  "scope_out": [
+    "two-factor authentication (2FA)",
+    "SSO with Active Directory",
+    "biometric authentication",
+    "billing"
+  ],
+  "locked_at": "2026-06-01T00:00:00Z",
+  "locked_by": "alice"
+}

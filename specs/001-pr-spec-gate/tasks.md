@@ -20,9 +20,9 @@ criteria instead.
 
 **Purpose**: Project initialization — must complete before any other phase.
 
-- [ ] T001 Create project structure: `pyproject.toml`, `src/specguard/__init__.py`, `tests/conftest.py` skeleton, empty fixture dirs `tests/fixtures/corpus/` and `tests/fixtures/events/`
-- [ ] T002 [P] Scaffold GitHub Actions workflows: `.github/workflows/tests.yml` (pytest on push/PR) and `.github/workflows/specguard.yml` (dogfood — placeholder, wired up in T035)
-- [ ] T003 [P] Add `ruff` + `mypy` config to `pyproject.toml`; confirm `pytest` discovers `tests/`
+- [X] T001 Create project structure: `pyproject.toml`, `src/specguard/__init__.py`, `tests/conftest.py` skeleton, empty fixture dirs `tests/fixtures/corpus/` and `tests/fixtures/events/`
+- [X] T002 [P] Scaffold GitHub Actions workflows: `.github/workflows/tests.yml` (pytest on push/PR) and `.github/workflows/specguard.yml` (dogfood — placeholder, wired up in T035)
+- [X] T003 [P] Add `ruff` + `mypy` config to `pyproject.toml`; confirm `pytest` discovers `tests/`
 
 ---
 
@@ -33,10 +33,10 @@ start until this phase is complete.
 
 **⚠️ CRITICAL**: No user story work can begin until T004–T007 are done.
 
-- [ ] T004 Implement all Pydantic models in `src/specguard/models.py`: `ScopeLock`, `Config`, `RolesConfig`, `Classification`, `Verdict`, `PRContext`, `Approval` — exact field shapes from `data-model.md`
-- [ ] T005 [P] Implement `src/specguard/config.py`: load and validate `.specguard/config.yml` (with all defaults from `data-model.md`) and `.specguard/lock.json`; raise `ConfigError` on parse failures; implement `detect_framework()` (checks for `.specify/`, `openspec/`, logs only)
-- [ ] T006 [P] Implement `src/specguard/gitdiff.py`: run `git diff --name-only {base}...{head}`, filter by watch-list globs, then `git show` per file for old/new content and unified diff; handle added/deleted/renamed cases
-- [ ] T007 Populate `tests/conftest.py`: `FakeAnthropicClient` that returns canned `Classification` objects keyed by file path and raises configurable errors; sample `ScopeLock`, `Config`, `RolesConfig` fixtures; `pr_event` and `pr_review_event` payload fixtures pointing at `tests/fixtures/events/`
+- [X] T004 Implement all Pydantic models in `src/specguard/models.py`: `ScopeLock`, `Config`, `RolesConfig`, `Classification`, `Verdict`, `PRContext`, `Approval` — exact field shapes from `data-model.md`
+- [X] T005 [P] Implement `src/specguard/config.py`: load and validate `.specguard/config.yml` (with all defaults from `data-model.md`) and `.specguard/lock.json`; raise `ConfigError` on parse failures; implement `detect_framework()` (checks for `.specify/`, `openspec/`, logs only)
+- [X] T006 [P] Implement `src/specguard/gitdiff.py`: run `git diff --name-only {base}...{head}`, filter by watch-list globs, then `git show` per file for old/new content and unified diff; handle added/deleted/renamed cases
+- [X] T007 Populate `tests/conftest.py`: `FakeAnthropicClient` that returns canned `Classification` objects keyed by file path and raises configurable errors; sample `ScopeLock`, `Config`, `RolesConfig` fixtures; `pr_event` and `pr_review_event` payload fixtures pointing at `tests/fixtures/events/`
 
 **Checkpoint**: Foundation ready — all four modules importable, fixtures usable. User story implementation can begin.
 
@@ -54,16 +54,16 @@ confidence + matched topics + required role; submit approving review from author
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement `src/specguard/classifier.py`: build byte-stable system prompt per `contracts/classifier.md` with `cache_control: {"type": "ephemeral"}`; call `client.messages.parse(output_format=Classification, thinking={"type":"adaptive"}, max_tokens=4000)`; truncate diff context to ≤2000 chars/hunk but never truncate scope lists; one re-ask on schema validation failure; raise `ClassifierError` on exhaustion
-- [ ] T009 [US1] Build additive golden corpus: create ≥15 cases under `tests/fixtures/corpus/NN_name/{old.md,new.md,scope.json,expected.json}` — typo fix, wording clarification, in-scope detail expansion, adversarial (out-of-scope topic mentioned only to exclude it), non-watched file only
-- [ ] T010 [US1] Build scope-change golden corpus: create ≥12 cases under `tests/fixtures/corpus/` — verbatim scope_out topic added, semantically out-of-scope novel topic, goal sentence rewritten, domain shift, mixed diff (typo + scope add in one file)
-- [ ] T011 [P] [US1] Implement `tests/eval/run_eval.py`: load all corpus cases, call real `classifier.py` (requires `ANTHROPIC_API_KEY`), print confusion matrix, per-case confidence, false-positive rate, total cost — exit non-zero if any additive case produces BLOCK at default threshold
-- [ ] T012 [US1] Implement `src/specguard/roles.py`: parse `roles.yml`; `fnmatch`-style glob matching, most-specific rule wins; resolve PR-author login → role membership; expose `is_edit_authorized(login, path)` and `required_approver_roles(path)` → raise `ConfigError` on unknown role reference
-- [ ] T013 [US1] Implement `src/specguard/approvals.py`: `GET /repos/{owner}/{repo}/pulls/{n}/reviews` with `httpx`; deduplicate to latest review per reviewer; expose `has_qualified_approval(required_roles, roles_config)` → `True` iff an APPROVED reviewer is in an authorizing role
-- [ ] T014 [US1] Implement `src/specguard/engine.py`: per-file pipeline per `plan.md D2` — edit-rule check (deterministic, no API) → `classifier.py` → threshold table from `research.md R3` → `approvals.py` → produce `Verdict`; apply `on_error` policy on `ClassifierError`; return list of `Verdict` objects
-- [ ] T015 [US1] Implement `src/specguard/report.py`: emit `::error file={path}::` per BLOCK, `::warning file={path}::` per WARN, `::notice::` for setup hints; write verdict table to `$GITHUB_STEP_SUMMARY` in the §F4 format from `contracts/action-interface.md`; additive files get one quiet summary line only
-- [ ] T016 [US1] Implement `src/specguard/ci.py` as `__main__`: parse `GITHUB_EVENT_PATH` → `PRContext`; detect fork (`is_fork=True`) → emit notice + exit 0; call `gitdiff.py`, `config.py`, `engine.py` per file; call `report.py`; exit 1 iff any BLOCK, exit 2 on `ConfigError`, exit 0 otherwise
-- [ ] T017 [US1] Write `action.yml`: composite action — `actions/setup-python@v5` (python 3.12) → `pip install specguard==${VERSION}` → `python -m specguard.ci`; inputs `anthropic-api-key` (required) and `github-token` (default `${{ github.token }}`); export both as env vars
+- [X] T008 [US1] Implement `src/specguard/classifier.py`: build byte-stable system prompt per `contracts/classifier.md` with `cache_control: {"type": "ephemeral"}`; call `client.messages.parse(output_format=Classification, thinking={"type":"adaptive"}, max_tokens=4000)`; truncate diff context to ≤2000 chars/hunk but never truncate scope lists; one re-ask on schema validation failure; raise `ClassifierError` on exhaustion
+- [X] T009 [US1] Build additive golden corpus: create ≥15 cases under `tests/fixtures/corpus/NN_name/{old.md,new.md,scope.json,expected.json}` — typo fix, wording clarification, in-scope detail expansion, adversarial (out-of-scope topic mentioned only to exclude it), non-watched file only
+- [X] T010 [US1] Build scope-change golden corpus: create ≥12 cases under `tests/fixtures/corpus/` — verbatim scope_out topic added, semantically out-of-scope novel topic, goal sentence rewritten, domain shift, mixed diff (typo + scope add in one file)
+- [X] T011 [P] [US1] Implement `tests/eval/run_eval.py`: load all corpus cases, call real `classifier.py` (requires `ANTHROPIC_API_KEY`), print confusion matrix, per-case confidence, false-positive rate, total cost — exit non-zero if any additive case produces BLOCK at default threshold
+- [X] T012 [US1] Implement `src/specguard/roles.py`: parse `roles.yml`; `fnmatch`-style glob matching, most-specific rule wins; resolve PR-author login → role membership; expose `is_edit_authorized(login, path)` and `required_approver_roles(path)` → raise `ConfigError` on unknown role reference
+- [X] T013 [US1] Implement `src/specguard/approvals.py`: `GET /repos/{owner}/{repo}/pulls/{n}/reviews` with `httpx`; deduplicate to latest review per reviewer; expose `has_qualified_approval(required_roles, roles_config)` → `True` iff an APPROVED reviewer is in an authorizing role
+- [X] T014 [US1] Implement `src/specguard/engine.py`: per-file pipeline per `plan.md D2` — edit-rule check (deterministic, no API) → `classifier.py` → threshold table from `research.md R3` → `approvals.py` → produce `Verdict`; apply `on_error` policy on `ClassifierError`; return list of `Verdict` objects
+- [X] T015 [US1] Implement `src/specguard/report.py`: emit `::error file={path}::` per BLOCK, `::warning file={path}::` per WARN, `::notice::` for setup hints; write verdict table to `$GITHUB_STEP_SUMMARY` in the §F4 format from `contracts/action-interface.md`; additive files get one quiet summary line only
+- [X] T016 [US1] Implement `src/specguard/ci.py` as `__main__`: parse `GITHUB_EVENT_PATH` → `PRContext`; detect fork (`is_fork=True`) → emit notice + exit 0; call `gitdiff.py`, `config.py`, `engine.py` per file; call `report.py`; exit 1 iff any BLOCK, exit 2 on `ConfigError`, exit 0 otherwise
+- [X] T017 [US1] Write `action.yml`: composite action — `actions/setup-python@v5` (python 3.12) → `pip install specguard==${VERSION}` → `python -m specguard.ci`; inputs `anthropic-api-key` (required) and `github-token` (default `${{ github.token }}`); export both as env vars
 
 **Checkpoint**: US1 fully functional — blocked PR + authorized approval → green is the demo and the thesis test.
 
@@ -80,10 +80,10 @@ file with "ADDITIVE" and no block/warn icons.
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Add `tests/fixtures/events/pr_typo_fix.json` and `pr_scope_change.json` event payloads (pull_request and pull_request_review variants for each)
-- [ ] T019 [P] [US2] Write `tests/test_engine.py` ADDITIVE scenarios: FakeAnthropicClient returns ADDITIVE/0.95 → Verdict outcome=PASS reason=additive; non-watched changed files → skipped; ADDITIVE with confidence < 0.60 → PASS with notice
-- [ ] T020 [P] [US2] Write `tests/test_classifier.py`: prompt assembly covers scope_lock never truncated; diff hunk context capped; test FakeAnthropicClient returns schema-valid Classification; test re-ask on schema failure; test ClassifierError on exhaustion
-- [ ] T021 [US2] Write `tests/test_ci.py`: point `GITHUB_EVENT_PATH` at `pr_typo_fix.json` fixture → exit 0 and empty annotation list; point at fork-event fixture → exit 0 + skip notice
+- [X] T018 [US2] Add `tests/fixtures/events/pr_typo_fix.json` and `pr_scope_change.json` event payloads (pull_request and pull_request_review variants for each)
+- [X] T019 [P] [US2] Write `tests/test_engine.py` ADDITIVE scenarios: FakeAnthropicClient returns ADDITIVE/0.95 → Verdict outcome=PASS reason=additive; non-watched changed files → skipped; ADDITIVE with confidence < 0.60 → PASS with notice
+- [X] T020 [P] [US2] Write `tests/test_classifier.py`: prompt assembly covers scope_lock never truncated; diff hunk context capped; test FakeAnthropicClient returns schema-valid Classification; test re-ask on schema failure; test ClassifierError on exhaustion
+- [X] T021 [US2] Write `tests/test_ci.py`: point `GITHUB_EVENT_PATH` at `pr_typo_fix.json` fixture → exit 0 and empty annotation list; point at fork-event fixture → exit 0 + skip notice
 
 **Checkpoint**: US1 and US2 both pass. Additive path confirmed friction-free.
 
@@ -100,9 +100,9 @@ architect PR → edit-rule passes, proceeds to classify normally.
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Extend `src/specguard/engine.py` protected-violation branch: before any API call, if `is_edit_authorized(author_login, path)` is False → produce `Verdict(outcome=BLOCK, reason=protected_violation, classification=None)`; confirm no `classifier.py` call occurs in this path (verifiable via FakeAnthropicClient call counter)
-- [ ] T023 [P] [US3] Write `tests/test_engine.py` protected-violation scenarios: unauthorized author + protected path → BLOCK/protected_violation, FakeAnthropicClient called 0 times; authorized author + protected path → proceeds to classification
-- [ ] T024 [P] [US3] Write `tests/test_roles.py`: glob matching (exact, wildcard, most-specific); `"*"` wildcard membership; unknown role reference → ConfigError; missing roles.yml → solo mode flag
+- [X] T022 [US3] Extend `src/specguard/engine.py` protected-violation branch: before any API call, if `is_edit_authorized(author_login, path)` is False → produce `Verdict(outcome=BLOCK, reason=protected_violation, classification=None)`; confirm no `classifier.py` call occurs in this path (verifiable via FakeAnthropicClient call counter)
+- [X] T023 [P] [US3] Write `tests/test_engine.py` protected-violation scenarios: unauthorized author + protected path → BLOCK/protected_violation, FakeAnthropicClient called 0 times; authorized author + protected path → proceeds to classification
+- [X] T024 [P] [US3] Write `tests/test_roles.py`: glob matching (exact, wildcard, most-specific); `"*"` wildcard membership; unknown role reference → ConfigError; missing roles.yml → solo mode flag
 
 **Checkpoint**: US1 + US2 + US3 all pass. Self-protecting governance config working.
 
@@ -119,9 +119,9 @@ one `::notice` with setup instructions.
 
 ### Implementation for User Story 4
 
-- [ ] T025 [US4] Extend `src/specguard/engine.py` solo-mode path: when `roles_config` is None (no roles.yml), any SCOPE_CHANGE verdict ≥ block_threshold → `Verdict(outcome=WARN, reason=scope_change_low_confidence)` instead of BLOCK; SCOPE_CHANGE < threshold stays WARN unchanged
-- [ ] T026 [US4] Extend `src/specguard/ci.py` no-config path: if `.specguard/` absent or `lock.json` missing → single `::notice::` with setup URL, exit 0, no file evaluation
-- [ ] T027 [US4] Write `tests/test_engine.py` solo-mode + no-config scenarios: no roles.yml + SCOPE_CHANGE/0.90 → WARN not BLOCK; no lock.json → not_configured verdict
+- [X] T025 [US4] Extend `src/specguard/engine.py` solo-mode path: when `roles_config` is None (no roles.yml), any SCOPE_CHANGE verdict ≥ block_threshold → `Verdict(outcome=WARN, reason=scope_change_low_confidence)` instead of BLOCK; SCOPE_CHANGE < threshold stays WARN unchanged
+- [X] T026 [US4] Extend `src/specguard/ci.py` no-config path: if `.specguard/` absent or `lock.json` missing → single `::notice::` with setup URL, exit 0, no file evaluation
+- [X] T027 [US4] Write `tests/test_engine.py` solo-mode + no-config scenarios: no roles.yml + SCOPE_CHANGE/0.90 → WARN not BLOCK; no lock.json → not_configured verdict
 
 **Checkpoint**: All four user stories independently functional.
 
@@ -131,17 +131,17 @@ one `::notice` with setup instructions.
 
 **Purpose**: Error handling, edge cases, documentation, evaluation, and release. Spans all stories.
 
-- [ ] T028 [P] Error handling in `src/specguard/engine.py` + `src/specguard/ci.py`: `ClassifierError` → `on_error: warn` → PASS + `::warning::` "could not classify"; `on_error: fail` → BLOCK; `ConfigError` anywhere → exit 2 + `::error::` naming file and parse problem
-- [ ] T029 [P] Fork PR detection in `src/specguard/ci.py`: `pull_request.head.repo.fork != base repo` → emit `::warning::` "SpecGuard skipped: secrets unavailable on fork PRs" → exit 0; write `tests/fixtures/events/pr_fork.json`
-- [ ] T030 [P] Large-diff handling in `src/specguard/classifier.py`: diffs > `max_diff_chars` (default 30K) truncated with a `[TRUNCATED]` marker; scope lists never touched; truncation noted in Verdict explanation
-- [ ] T031 [P] Write `tests/test_config.py`: valid config.yml with all defaults; missing keys → defaults applied; malformed YAML → ConfigError; missing lock.json → ConfigError; missing config.yml → defaults only
-- [ ] T032 [P] Write `tests/test_approvals.py`: Reviews API mocked with `httpx`; multiple reviews from same reviewer → latest wins; APPROVED from role member → qualified; APPROVED from non-member → not qualified; CHANGES_REQUESTED → not qualified
-- [ ] T033 Write `README.md`: one-liner positioning, 5-minute install quickstart (config templates + workflow YAML + branch-protection steps), blocked-PR screenshot placeholder, cost disclosure (~$0.03–0.05/file/push), MIT badge
-- [ ] T034 [P] Write `docs/quickstart.md`: mirror of `specs/001-pr-spec-gate/quickstart.md` but user-facing; links to README config templates; covers V1–V5 scenarios from the spec quickstart
-- [ ] T035 Complete `.github/workflows/specguard.yml`: dogfood — watch `SPECGUARD_PRODUCT_SPEC.md`, `README.md`, and `specs/**/*.md`; reference the published action once T017 + T038 are done
-- [ ] T036 Run `tests/eval/run_eval.py` against real API; tune system prompt and/or `block_threshold` until SC-001 (0 false BLOCKs on additive corpus) and SC-002 (≥90% recall on scope-change corpus) both pass; document final threshold in `research.md`
-- [ ] T037 Sandbox E2E: create throwaway GitHub repo with config from README templates; execute all 6 scenarios from `quickstart.md V4`; confirm blocked-then-approved-then-green flow works; save blocked-PR screenshot for README
-- [ ] T038 [P] PyPI publish: bump version in `pyproject.toml`; `python -m build && twine upload dist/*`; tag action repo `v0`; pin version in `action.yml`
+- [X] T028 [P] Error handling in `src/specguard/engine.py` + `src/specguard/ci.py`: `ClassifierError` → `on_error: warn` → PASS + `::warning::` "could not classify"; `on_error: fail` → BLOCK; `ConfigError` anywhere → exit 2 + `::error::` naming file and parse problem
+- [X] T029 [P] Fork PR detection in `src/specguard/ci.py`: `pull_request.head.repo.fork != base repo` → emit `::warning::` "SpecGuard skipped: secrets unavailable on fork PRs" → exit 0; write `tests/fixtures/events/pr_fork.json`
+- [X] T030 [P] Large-diff handling in `src/specguard/classifier.py`: diffs > `max_diff_chars` (default 30K) truncated with a `[TRUNCATED]` marker; scope lists never touched; truncation noted in Verdict explanation
+- [X] T031 [P] Write `tests/test_config.py`: valid config.yml with all defaults; missing keys → defaults applied; malformed YAML → ConfigError; missing lock.json → ConfigError; missing config.yml → defaults only
+- [X] T032 [P] Write `tests/test_approvals.py`: Reviews API mocked with `httpx`; multiple reviews from same reviewer → latest wins; APPROVED from role member → qualified; APPROVED from non-member → not qualified; CHANGES_REQUESTED → not qualified
+- [X] T033 Write `README.md`: one-liner positioning, 5-minute install quickstart (config templates + workflow YAML + branch-protection steps), blocked-PR screenshot placeholder, cost disclosure (~$0.03–0.05/file/push), MIT badge
+- [X] T034 [P] Write `docs/quickstart.md`: mirror of `specs/001-pr-spec-gate/quickstart.md` but user-facing; links to README config templates; covers V1–V5 scenarios from the spec quickstart
+- [X] T035 Complete `.github/workflows/specguard.yml`: dogfood — watch `SPECGUARD_PRODUCT_SPEC.md`, `README.md`, and `specs/**/*.md`; reference the published action once T017 + T038 are done
+- [X] T036 Run `tests/eval/run_eval.py` against real API; tune system prompt and/or `block_threshold` until SC-001 (0 false BLOCKs on additive corpus) and SC-002 (≥90% recall on scope-change corpus) both pass; document final threshold in `research.md`
+- [X] T037 Sandbox E2E: create throwaway GitHub repo with config from README templates; execute all 6 scenarios from `quickstart.md V4`; confirm blocked-then-approved-then-green flow works; save blocked-PR screenshot for README
+- [X] T038 [P] PyPI publish: bump version in `pyproject.toml`; `python -m build && twine upload dist/*`; tag action repo `v0`; pin version in `action.yml`
 
 ---
 

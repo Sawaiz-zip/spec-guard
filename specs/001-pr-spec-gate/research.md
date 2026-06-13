@@ -121,6 +121,61 @@ flagged in SPECGUARD_PRODUCT_SPEC.md §10 that bear on Phase 0.
   depending on their internals anyway. (This repo itself now uses Spec Kit, which doubles as
   format research for the future adapter.)
 
+## R2a. Model guardrail (amends R2): default Sonnet 4.6, Opus 4.8 hard-blocked
+
+Owner decision (2026-06-12): `claude-opus-4-8` must NEVER be invoked — not by
+default, not via config.yml, not via `SPECGUARD_MODEL`, not by the eval
+harness, and not on any retry/failure path. Calibration (R7a) showed Sonnet
+4.6 classifies the golden corpus identically (27/27) at ~6× lower cost, so
+Opus has no quality case here. Enforcement is layered:
+
+1. `Config.model` default is `claude-sonnet-4-6`; a Pydantic validator rejects
+   any model matching `BLOCKED_MODEL_MARKERS` (`opus-4-8`, covering dated
+   variants) → ConfigError, exit 2.
+2. The `SPECGUARD_MODEL` env override re-validates the full Config (a plain
+   `model_copy` would skip validation).
+3. `classifier.classify()` calls `assert_model_allowed()` immediately before
+   any API call — a blocked model raises ValueError and crashes the run; it
+   is deliberately NOT a ClassifierError so the fail-open `on_error: warn`
+   policy can never swallow it.
+
+Tests: `test_config.py::TestOpusGuardrail`.
+
+## R7a. Calibration results (T036) — gate passed, threshold confirmed
+
+Run 2026-06-12 against the 27-case golden corpus (15 additive, 12 scope-change)
+at `block_threshold: 0.75`:
+
+| Model | Confusion | False BLOCKs (SC-001: 0) | Recall (SC-002: ≥90%) | Cost |
+|---|---|---|---|---|
+| `claude-opus-4-8` (default) | 27/27 correct | 0 | 12/12 (100%) | ~$1.18 |
+| `claude-sonnet-4-6` | 27/27 correct | 0 | 12/12 (100%) | ~$0.19 |
+
+Both adversarial exclusion-mention cases classified ADDITIVE at ≥0.97
+confidence; all scope-change confidences ≥0.97. **Final threshold: 0.75
+(unchanged)** — wide margins on both sides, no tuning needed. Sonnet 4.6 is a
+defensible cost-saving choice for installers. Re-run on any prompt or
+threshold change (constitution gate).
+
+## R5a. Sandbox E2E findings (T037) — two amendments
+
+- **Approval re-evaluation (amends D3/R5)**: GitHub branch protection counts
+  every check run named `specguard` on the head commit, so a passing
+  `pull_request_review`-triggered run does NOT unblock the failed
+  `pull_request`-triggered one. Verified live: PR stayed BLOCKED with
+  reviewDecision APPROVED until the original run was re-run. The shipped
+  pattern is therefore: only `pull_request` runs produce the verdict; a
+  lightweight `reevaluate` job on approved reviews re-runs that original run
+  via `POST /actions/runs/{id}/rerun` (needs `actions: write`). UX is
+  unchanged — approve, check re-runs, merge unblocks, zero new commits.
+- **Governance config provenance (security)**: reading `.specguard/` from the
+  Actions checkout let a PR rewrite the rules it was judged by — a PR that
+  added its author to `architect` in `roles.yml` passed the protected-path
+  check against its own edited file (verified live before the fix). `ci.py`
+  now reads lock/config/roles from the PR **base SHA** via `git show`;
+  governance changes take effect only after merging under the old rules.
+  Regression tests: `test_ci.py::TestGovernanceConfigFromBase`.
+
 ## R10. Distribution
 
 - **Decision**: PyPI package `specguard` + composite action referenced as

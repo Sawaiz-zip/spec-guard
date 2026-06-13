@@ -1,0 +1,8 @@
+{
+  "pull_request": {
+    "number": 43,
+    "user": { "login": "outside-contributor" },
+    "base": { "sha": "BASE_SHA", "repo": { "full_name": "acme/widgets" } },
+    "head": { "sha": "HEAD_SHA", "repo": { "full_name": "outside-contributor/widgets", "fork": true } }
+  }
+}

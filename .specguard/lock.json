@@ -1,0 +1,21 @@
+{
+  "goal": "A semantic governance gate for spec files: classify every PR change against a locked project goal and scope, pass additive changes silently, and block unapproved scope changes at merge time via GitHub required status checks",
+  "scope_in": [
+    "merge-time enforcement through a GitHub Action and branch protection",
+    "ADDITIVE vs SCOPE_CHANGE classification via an independent Claude API call",
+    "role-based scope-change approvals through GitHub's native PR reviews",
+    "deterministic protected-path rules for governance config files",
+    "solo-developer warn mode",
+    "PyPI package plus composite GitHub Action distribution",
+    "golden-corpus calibration of the classifier"
+  ],
+  "scope_out": [
+    "web dashboards, separate websites, or any new UI",
+    "SaaS billing or a hosted service",
+    "defining our own spec format or proposal workflow",
+    "embedding or forking Spec Kit / OpenSpec code",
+    "code-vs-spec drift detection"
+  ],
+  "locked_at": "2026-06-11T00:00:00Z",
+  "locked_by": "ibraheem-111"
+}
