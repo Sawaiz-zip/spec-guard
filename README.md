@@ -118,16 +118,40 @@ rules:
 watch: ["README.md", "CLAUDE.md", "AGENTS.md", "ARCHITECTURE.md", "*.kilo", ".specguard/**"]
 block_threshold: 0.75
 on_error: warn              # vendor outage: pass with a loud warning ("fail" to block)
+provider: anthropic         # anthropic | openai | gemini | openrouter
 model: claude-sonnet-4-6
 max_diff_chars: 30000
 ```
 
 > You bring your own API key and choose the model — SpecGuard never bills you directly.
-> Set `model:` in `.specguard/config.yml` to use any model you have access to.
 > With the default `claude-sonnet-4-6` expect roughly **$0.01–0.02 per watched file
 > per push** (~3–5K input + ~500 output tokens); it scored a perfect confusion
-> matrix on the calibration corpus. Note: `claude-opus-4-8` is hard-blocked by a
-> project guardrail (no quality gain on this task at ~6× the cost).
+> matrix on the calibration corpus. `claude-opus-4-8` is hard-blocked by a project
+> guardrail (no quality gain on this task at ~6× the cost).
+
+### Choose your LLM provider
+
+SpecGuard classifies through one shared engine behind a provider seam — pick the backend you
+already pay for. Anthropic ships in the base install; the rest are one extra away:
+
+| `provider:` | install | API key env var | example `model:` |
+|---|---|---|---|
+| `anthropic` *(default)* | `pip install specguard-ci` | `ANTHROPIC_API_KEY` | `claude-sonnet-4-6` |
+| `openai` | `pip install "specguard-ci[openai]"` | `OPENAI_API_KEY` | `gpt-4o-2024-11-20` |
+| `gemini` | `pip install "specguard-ci[gemini]"` | `GEMINI_API_KEY` | `gemini-2.0-flash` |
+| `openrouter` | `pip install "specguard-ci[openai]"` | `OPENROUTER_API_KEY` | `anthropic/claude-3.5-sonnet` |
+
+Non-Anthropic providers require an explicit `model:`. Only Anthropic + Sonnet 4.6 is
+calibration-verified against the golden corpus; other backends work but are unvalidated until
+you run them through `tests/eval/run_eval.py`. `claude-haiku-4-5` is selectable and ~3× cheaper
+but missed the 90% recall gate (83%), so it stays opt-in, not the default.
+
+> **Python**: the package installs on **Python 3.10+**. The CI Action provisions its own
+> Python on the runner, so the gate works for repos in *any* language; only the local tools
+> need a 3.10+ interpreter on your machine.
+
+<!-- TODO: blocked-PR screenshot from the sandbox E2E run (T037) -->
+<!-- ![A blocked scope-change PR](assets/blocked-pr.png) -->
 
 <!-- TODO: blocked-PR screenshot from the sandbox E2E run (T037) -->
 <!-- ![A blocked scope-change PR](assets/blocked-pr.png) -->

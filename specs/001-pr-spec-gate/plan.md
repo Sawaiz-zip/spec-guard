@@ -17,7 +17,8 @@ deliverables with a zero-false-block release gate.
 
 ## Technical Context
 
-**Language/Version**: Python 3.12
+**Language/Version**: Python 3.12 *(superseded by 003-provider-agnostic: floor lowered to
+Python ≥ 3.10)*
 
 **Primary Dependencies**: `anthropic` (Claude API SDK), `pydantic` v2 (models + structured
 output), `pyyaml` (roles/config parsing), `httpx` (GitHub REST API). Git CLI assumed present

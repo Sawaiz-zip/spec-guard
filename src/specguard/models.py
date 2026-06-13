@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 DEFAULT_WATCH = [
     "README.md",
@@ -18,6 +18,12 @@ DEFAULT_WATCH = [
     ".specguard/**",
 ]
 
+Provider = Literal["anthropic", "openai", "gemini", "openrouter"]
+
+# Default backend + model. Sonnet 4.6 is the calibrated default (passed the
+# golden-corpus gate 27/27, research.md R7a). Other providers are opt-in and
+# require an explicit model — there is no sensible cross-provider default.
+DEFAULT_PROVIDER: Provider = "anthropic"
 DEFAULT_MODEL = "claude-sonnet-4-6"
 
 # Guardrail: Opus 4.8 must never be invoked — not by default, not via
@@ -53,6 +59,7 @@ class Config(BaseModel):
     watch: list[str] = Field(default_factory=lambda: list(DEFAULT_WATCH))
     block_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
     on_error: Literal["warn", "fail"] = "warn"
+    provider: Provider = DEFAULT_PROVIDER
     model: str = DEFAULT_MODEL
     max_diff_chars: int = Field(default=30000, gt=0)
 
@@ -61,6 +68,18 @@ class Config(BaseModel):
     def _model_not_blocked(cls, value: str) -> str:
         assert_model_allowed(value)
         return value
+
+    @model_validator(mode="after")
+    def _provider_needs_explicit_model(self) -> Config:
+        # The default model is Anthropic-specific; a non-Anthropic provider
+        # left on that default would send a Claude model id to the wrong API.
+        if self.provider != "anthropic" and self.model == DEFAULT_MODEL:
+            raise ValueError(
+                f"provider '{self.provider}' requires an explicit `model:` in "
+                f".specguard/config.yml (the default '{DEFAULT_MODEL}' is "
+                "Anthropic-only)"
+            )
+        return self
 
 
 class ScopeChangeRule(BaseModel):

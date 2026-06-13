@@ -18,7 +18,7 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 from pathlib import Path
 
 from specguard import localreport
-from specguard.classifier import AnthropicAdapter, ClassifierAdapter
+from specguard.classifier import ClassifierAdapter
 from specguard.config import (
     CONFIG_PATH,
     LOCK_PATH,
@@ -37,15 +37,11 @@ from specguard.localcheck import (
     resolve_snapshot,
 )
 from specguard.models import Approval, PRContext, Verdict
+from specguard.providers import make_adapter, required_env_var
 
 SETUP_HINT = (
     "this repository has no .specguard/lock.json at the baseline — run "
     "`specguard init` to lock your project's goal and scope"
-)
-
-MISSING_KEY_HINT = (
-    "ANTHROPIC_API_KEY is not set — export it (or add it to your environment) "
-    "to classify changes locally"
 )
 
 DEFAULT_HOOK_TIMEOUT = 30.0
@@ -207,13 +203,18 @@ def _run_check(
         return 0
 
     if adapter is None:
-        if not os.environ.get("ANTHROPIC_API_KEY"):
+        env_var = required_env_var(governance.config.provider)
+        if not os.environ.get(env_var):
+            hint = (
+                f"{env_var} is not set — export it to classify with the "
+                f"'{governance.config.provider}' provider"
+            )
             if args.hook:
-                print(f"specguard: {MISSING_KEY_HINT} — {localreport.COULD_NOT_CLASSIFY}")
+                print(f"specguard: {hint} — {localreport.COULD_NOT_CLASSIFY}")
                 return 0
-            print(f"specguard: error: {MISSING_KEY_HINT}", file=sys.stderr)
+            print(f"specguard: error: {hint}", file=sys.stderr)
             return 2
-        adapter = AnthropicAdapter()
+        adapter = make_adapter(governance.config)
 
     pr = PRContext(
         pr_number=0,

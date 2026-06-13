@@ -1,6 +1,12 @@
 # Contract: Classifier I/O
 
-The single Claude API call per watched changed file. Owner: `src/specguard/classifier.py`.
+The single classifier API call per watched changed file. Owner:
+`src/specguard/classifier.py`.
+
+> Note (003-provider-agnostic): the call is now made through a pluggable `ClassifierAdapter`
+> — Anthropic by default, OpenAI/Gemini/OpenRouter selectable. The contract below is the
+> Anthropic adapter; all providers return the same `Classification`. See
+> `specs/003-provider-agnostic/contracts/provider-adapters.md`.
 
 ## Request
 
