@@ -17,7 +17,8 @@ an advisory disclosure; the Opus 4.8 guardrail applies unchanged.
 
 ## Technical Context
 
-**Language/Version**: Python 3.12 (unchanged from Phase 0)
+**Language/Version**: Python 3.12 (unchanged from Phase 0) *(superseded by
+003-provider-agnostic: floor lowered to Python ≥ 3.10)*
 
 **Primary Dependencies**: Existing: `anthropic`, `pydantic` v2, `pyyaml`, `httpx`. New:
 `mcp` (official MCP Python SDK) as an **optional extra** `specguard-ci[mcp]` — the base

@@ -29,6 +29,7 @@ from specguard.config import (
 from specguard.engine import evaluate_pr
 from specguard.gitdiff import GitError, show_file, watched_changes
 from specguard.models import Approval, PRContext
+from specguard.providers import make_adapter
 
 SETUP_HINT = (
     "SpecGuard is installed but this repository has no .specguard/lock.json — "
@@ -114,7 +115,9 @@ def _run(client: Any | None, repo_root: Path) -> int:
         report.notice("SpecGuard: no watched spec files changed in this PR")
         return 0
 
-    adapter = AnthropicAdapter(client=client)
+    # Test injection keeps the Anthropic SDK seam; real runs pick the backend
+    # declared by config.provider (anthropic/openai/gemini/openrouter).
+    adapter = AnthropicAdapter(client=client) if client is not None else make_adapter(config)
 
     token = os.environ.get("GITHUB_TOKEN", "")
 

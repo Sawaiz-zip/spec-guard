@@ -12,12 +12,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from specguard.classifier import AnthropicAdapter, ClassifierAdapter
+from specguard.classifier import ClassifierAdapter
 from specguard.config import path_matches
 from specguard.gitdiff import diff_from_contents, show_file
 from specguard.localcheck import load_baseline_governance, require_repo_with_head
 from specguard.localreport import ADVISORY_NOTICE, COULD_NOT_CLASSIFY
 from specguard.models import Approval, PRContext, Verdict
+from specguard.providers import make_adapter, required_env_var
 
 SETUP_HINT = (
     "this repository has no .specguard/lock.json at the baseline — run "
@@ -66,17 +67,18 @@ def check_proposed_change(
     changed = diff_from_contents(path, old_content, proposed_content)
 
     if adapter is None:
-        if not os.environ.get("ANTHROPIC_API_KEY"):
+        env_var = required_env_var(governance.config.provider)
+        if not os.environ.get(env_var):
             return _advisory(
                 {
                     "configured": True,
                     "watched": True,
                     "classified": False,
                     "baseline": baseline,
-                    "detail": f"ANTHROPIC_API_KEY is not set — {COULD_NOT_CLASSIFY}",
+                    "detail": f"{env_var} is not set — {COULD_NOT_CLASSIFY}",
                 }
             )
-        adapter = AnthropicAdapter()
+        adapter = make_adapter(governance.config)
 
     from specguard.engine import evaluate_pr
 

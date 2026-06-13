@@ -1,9 +1,10 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/002-local-tools/plan.md` (constitution: `.specify/memory/constitution.md`,
-spec: `specs/002-local-tools/spec.md`, research: `specs/002-local-tools/research.md`,
-data model: `specs/002-local-tools/data-model.md`,
-contracts: `specs/002-local-tools/contracts/`).
-Shipped previous feature (Phase 0 CI gate): `specs/001-pr-spec-gate/`.
+`specs/003-provider-agnostic/plan.md` (constitution: `.specify/memory/constitution.md`,
+spec: `specs/003-provider-agnostic/spec.md`, research: `specs/003-provider-agnostic/research.md`,
+data model: `specs/003-provider-agnostic/data-model.md`,
+contracts: `specs/003-provider-agnostic/contracts/`).
+Shipped previous features: Phase 0 CI gate `specs/001-pr-spec-gate/`,
+Phase 1 local tools `specs/002-local-tools/`.
 <!-- SPECKIT END -->

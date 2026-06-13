@@ -62,6 +62,14 @@ WHOLE_FILE_LIMIT = 4000
 HUNK_CONTEXT_LIMIT = 2000
 TRUNCATION_MARKER = "[TRUNCATED — diff exceeded max_diff_chars]"
 
+# Models that reject the `thinking` parameter (the Haiku tier). Substring match,
+# consistent with how the Opus guardrail is enforced.
+_NO_THINKING_MARKERS = ("haiku",)
+
+
+def _supports_adaptive_thinking(model: str) -> bool:
+    return not any(marker in model for marker in _NO_THINKING_MARKERS)
+
 
 def build_user_message(
     lock: ScopeLock, changed: ChangedFile, max_diff_chars: int
@@ -156,11 +164,16 @@ def _attempt(
     messages: list[dict[str, Any]],
     reasked: bool = False,
 ) -> Classification | None:
+    # Adaptive thinking lifts classification quality but is not available on
+    # every model (Haiku rejects it). Send it only where supported so the
+    # default model can be a lighter one.
+    extra: dict[str, Any] = {}
+    if _supports_adaptive_thinking(config.model):
+        extra["thinking"] = {"type": "adaptive"}
     try:
         response = client.messages.parse(
             model=config.model,
             max_tokens=4000,
-            thinking={"type": "adaptive"},
             system=[
                 {
                     "type": "text",
@@ -170,6 +183,7 @@ def _attempt(
             ],
             messages=messages,
             output_format=Classification,
+            **extra,
         )
     except Exception as exc:  # SDK already auto-retried 429/5xx (max_retries)
         raise ClassifierError(f"classifier call failed: {exc}") from exc

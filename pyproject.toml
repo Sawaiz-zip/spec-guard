@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "specguard-ci"
-version = "0.2.0"
+version = "0.3.0"
 description = "Semantic governance gate for spec files: classifies PR changes against a locked project goal and scope."
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 authors = [{ name = "SpecGuard contributors" }]
 keywords = ["governance", "spec", "github-actions", "scope", "llm"]
 dependencies = [
@@ -28,6 +28,15 @@ dev = [
 mcp = [
     "mcp>=1.0",
 ]
+# Provider extras — the classifier backend (constitution: one output contract,
+# many providers). Anthropic ships in the base install; the rest are opt-in.
+# OpenRouter speaks the OpenAI wire protocol, so it reuses the openai extra.
+openai = [
+    "openai>=1.50",
+]
+gemini = [
+    "google-genai>=0.3",
+]
 
 [project.scripts]
 specguard = "specguard.cli:main"
@@ -44,7 +53,7 @@ addopts = "-q"
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py310"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -55,10 +64,15 @@ select = ["E", "F", "I", "UP", "B"]
 "src/specguard/cli.py" = ["E501"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.10"
 files = ["src"]
 strict = true
 warn_unreachable = true
+
+[[tool.mypy.overrides]]
+# Provider SDKs are optional extras; CI type-checks without them installed.
+module = ["openai.*", "google.genai.*", "google.*"]
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 # The MCP SDK is an optional extra; CI type-checks without it installed.
