@@ -9,7 +9,12 @@ description = "Semantic governance gate for spec files: classifies PR changes ag
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
-authors = [{ name = "SpecGuard contributors" }]
+authors = [
+    { name = "Sawaiz Naveed", email = "sawaiznaveed@gmail.com" },
+]
+maintainers = [
+    { name = "Sawaiz Naveed", email = "sawaiznaveed@gmail.com" },
+]
 keywords = ["governance", "spec", "github-actions", "scope", "llm"]
 dependencies = [
     "anthropic>=0.49",
