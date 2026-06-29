@@ -36,6 +36,68 @@ def scope_change_adapter(confidence: float = 0.93) -> FakeAdapter:
 
 
 # ---------------------------------------------------------------------------
+# specguard approve (005 US2)
+# ---------------------------------------------------------------------------
+
+
+class TestApprove:
+    def test_success_submits_review_and_exits_zero(self, git_repo, monkeypatch, capsys):
+        git_repo.git("remote", "add", "origin", "git@github.com:acme/widgets.git")
+        monkeypatch.chdir(git_repo.root)
+        monkeypatch.setenv("GH_TOKEN", "tok")
+        calls: list[tuple] = []
+        monkeypatch.setattr(
+            cli, "submit_approval_review", lambda *a, **k: calls.append(a)
+        )
+
+        exit_code = cli.main(["approve", "7"])
+
+        assert exit_code == 0
+        assert calls == [("acme/widgets", 7, "tok")]
+        assert "approved acme/widgets#7" in capsys.readouterr().out
+
+    def test_https_remote_is_parsed(self, git_repo, monkeypatch):
+        git_repo.git("remote", "add", "origin", "https://github.com/acme/widgets.git")
+        monkeypatch.chdir(git_repo.root)
+        monkeypatch.setenv("GH_TOKEN", "tok")
+        seen: list[str] = []
+        monkeypatch.setattr(
+            cli, "submit_approval_review", lambda repo, *a, **k: seen.append(repo)
+        )
+
+        assert cli.main(["approve", "3"]) == 0
+        assert seen == ["acme/widgets"]
+
+    def test_no_token_exits_two_without_posting(self, git_repo, monkeypatch, capsys):
+        git_repo.git("remote", "add", "origin", "git@github.com:acme/widgets.git")
+        monkeypatch.chdir(git_repo.root)
+        monkeypatch.delenv("GH_TOKEN", raising=False)
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+        posted: list[tuple] = []
+        monkeypatch.setattr(
+            cli, "submit_approval_review", lambda *a, **k: posted.append(a)
+        )
+
+        exit_code = cli.main(["approve", "7"])
+
+        assert exit_code == 2
+        assert posted == []
+        assert "GH_TOKEN" in capsys.readouterr().err
+
+    def test_no_origin_remote_exits_two(self, git_repo, monkeypatch, capsys):
+        monkeypatch.chdir(git_repo.root)
+        monkeypatch.setenv("GH_TOKEN", "tok")
+        monkeypatch.setattr(
+            cli, "submit_approval_review", lambda *a, **k: pytest.fail("must not post")
+        )
+
+        exit_code = cli.main(["approve", "7"])
+
+        assert exit_code == 2
+        assert "--repo" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
 # US1: specguard check (T011)
 # ---------------------------------------------------------------------------
 

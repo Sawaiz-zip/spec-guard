@@ -145,8 +145,21 @@ class PRContext(BaseModel):
     repo: str
 
 
+ApprovalSource = Literal["native-review", "comment-command", "cli"]
+
+# Class of change for a permission query (distinct from the classifier's
+# SCOPE_CHANGE verdict): `edit` is governed by an `edit:` rule, `scope-change`
+# by a `scope_changes.approve` rule.
+ChangeClass = Literal["edit", "scope-change"]
+
+
 class Approval(BaseModel):
-    """Latest review per reviewer; qualifies iff state == APPROVED."""
+    """Latest review per reviewer; qualifies iff state == APPROVED.
+
+    `source` is audit/provenance only — `has_qualified_approval` never reads it,
+    so all approval paths evaluate identically (constitution III).
+    """
 
     reviewer_login: str
     state: str
+    source: ApprovalSource = "native-review"

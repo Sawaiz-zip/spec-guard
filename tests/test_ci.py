@@ -24,6 +24,15 @@ def load_event(name: str, base_sha: str, head_sha: str) -> dict:
     return json.loads(text.replace("BASE_SHA", base_sha).replace("HEAD_SHA", head_sha))
 
 
+def _no_network_approvals(monkeypatch, reviews=None, comments=None) -> None:
+    """Neutralize the live GitHub reads in ci.get_approvals; inject canned data."""
+    monkeypatch.setattr(ci, "fetch_approvals", lambda *a, **k: list(reviews or []))
+    monkeypatch.setattr(ci, "fetch_commit_time", lambda *a, **k: "2020-01-01T00:00:00Z")
+    monkeypatch.setattr(
+        ci, "fetch_comment_approvals", lambda *a, **k: list(comments or [])
+    )
+
+
 def setup_configured_repo(env: CIEnvironment, roles: bool = False) -> tuple[str, str]:
     """Two commits: base with config + README, head with a README edit."""
     repo = env.repo
@@ -69,7 +78,7 @@ class TestScopeChangePath:
     def test_scope_change_blocks_with_error_annotation(self, ci_env, capsys, monkeypatch):
         base, head = setup_configured_repo(ci_env, roles=True)
         ci_env.write_event(load_event("pr_scope_change.json", base, head))
-        monkeypatch.setattr(ci, "fetch_approvals", lambda *a, **k: [])
+        _no_network_approvals(monkeypatch)
         client = FakeAnthropicClient(
             responses={
                 "README.md": make_classification(
@@ -86,6 +95,43 @@ class TestScopeChangePath:
         assert "architect" in captured.out
         summary = ci_env.summary_path.read_text()
         assert "Changes requested" in summary
+
+    def _scope_change_with(self, ci_env, monkeypatch, comments):
+        from specguard.models import Approval
+
+        base, head = setup_configured_repo(ci_env, roles=True)
+        ci_env.write_event(load_event("pr_scope_change.json", base, head))
+        _no_network_approvals(
+            monkeypatch,
+            comments=[
+                Approval(reviewer_login=login, state="APPROVED", source="comment-command")
+                for login in comments
+            ],
+        )
+        client = FakeAnthropicClient(
+            responses={
+                "README.md": make_classification(
+                    "SCOPE_CHANGE", 0.93, "HIGH", ["SaaS pricing"], "Added pricing tiers"
+                )
+            }
+        )
+        return ci.main(client=client)
+
+    def test_comment_approval_from_authorized_login_clears_block(
+        self, ci_env, capsys, monkeypatch
+    ):
+        # alice is the architect; her `/specguard approve` comment clears the block.
+        exit_code = self._scope_change_with(ci_env, monkeypatch, ["alice"])
+        assert exit_code == 0
+        assert "::error" not in capsys.readouterr().out
+
+    def test_comment_approval_from_unauthorized_login_does_not_clear(
+        self, ci_env, capsys, monkeypatch
+    ):
+        # mallory is not in the architect role — the block stands (FR-003).
+        exit_code = self._scope_change_with(ci_env, monkeypatch, ["mallory"])
+        assert exit_code == 1
+        assert "::error file=README.md::" in capsys.readouterr().out
 
 
 class TestSoloModePath:

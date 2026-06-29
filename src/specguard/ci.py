@@ -14,7 +14,11 @@ from pathlib import Path
 from typing import Any
 
 from specguard import report
-from specguard.approvals import fetch_approvals
+from specguard.approvals import (
+    fetch_approvals,
+    fetch_comment_approvals,
+    fetch_commit_time,
+)
 from specguard.classifier import AnthropicAdapter
 from specguard.config import (
     CONFIG_PATH,
@@ -119,7 +123,15 @@ def _run(client: Any | None, repo_root: Path) -> int:
     token = os.environ.get("GITHUB_TOKEN", "")
 
     def get_approvals() -> list[Approval]:
-        return fetch_approvals(pr.repo, pr.pr_number, token)
+        # Approvals come from two platform-native sources, evaluated identically
+        # by the engine: native reviews AND `/specguard approve` comments posted
+        # at/after the head commit (FR-005, FR-010). A failure in either read
+        # raises ApprovalsError, which the engine treats as "no approvals" so a
+        # blocked verdict stays blocked (fail-closed).
+        reviews = fetch_approvals(pr.repo, pr.pr_number, token)
+        since = fetch_commit_time(pr.repo, pr.head_sha, token)
+        comments = fetch_comment_approvals(pr.repo, pr.pr_number, token, since)
+        return reviews + comments
 
     verdicts = evaluate_pr(changed, lock, config, roles_config, pr, adapter, get_approvals)
 

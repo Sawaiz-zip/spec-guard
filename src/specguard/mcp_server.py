@@ -112,16 +112,18 @@ def check_proposed_change(
             }
         )
 
-    return _advisory(
-        {
-            "configured": True,
-            "watched": True,
-            "classified": True,
-            "baseline": baseline,
-            "governance_source": governance.source,
-            "verdict": _verdict_payload(verdict),
-        }
-    )
+    result = {
+        "configured": True,
+        "watched": True,
+        "classified": True,
+        "baseline": baseline,
+        "governance_source": governance.source,
+        "verdict": _verdict_payload(verdict),
+    }
+    redirect = _redirect(path, verdict)
+    if redirect is not None:
+        result["redirect"] = redirect
+    return _advisory(result)
 
 
 def _verdict_payload(verdict: Verdict) -> dict[str, Any]:
@@ -134,6 +136,68 @@ def _verdict_payload(verdict: Verdict) -> dict[str, Any]:
     if verdict.classification is not None:
         payload["classification"] = verdict.classification.model_dump()
     return payload
+
+
+def _redirect(path: str, verdict: Verdict) -> dict[str, Any] | None:
+    """Steer the agent away from a would-block scope change (F7, FR-008).
+
+    Returned ONLY when the change would block as an unapproved SCOPE_CHANGE;
+    additive/in-scope verdicts get no redirect (zero added friction, constitution IV).
+    """
+    if not (verdict.outcome == "BLOCK" and verdict.reason == "scope_change_unapproved"):
+        return None
+    roles = verdict.required_approver_roles
+    roles_text = ", ".join(roles) if roles else "an authorized role"
+    return {
+        "would_block": True,
+        "required_roles": roles,
+        "suggestion": (
+            f"this would change locked scope and block until {roles_text} approves — "
+            f"consider drafting it as a separate change/proposal instead of editing "
+            f"{path} directly"
+        ),
+    }
+
+
+def check_permission(
+    identity: str,
+    path: str,
+    change_class: str,
+    repo_root: Path | None = None,
+) -> dict[str, Any]:
+    """Whether `identity` may make `change_class` (edit | scope-change) to `path`."""
+    if change_class not in ("edit", "scope-change"):
+        return _advisory(
+            {
+                "error": "change_class must be 'edit' or 'scope-change'",
+                "identity": identity,
+                "path": path,
+            }
+        )
+    root = repo_root or Path.cwd()
+    _baseline, governance = _base(root)
+    base = {"identity": identity, "path": path, "change_class": change_class}
+    if governance.roles is None:
+        return _advisory(
+            {
+                **base,
+                "roles_configured": False,
+                "allowed": True,
+                "detail": "no .specguard/roles.yml — no role restrictions apply (warn mode)",
+            }
+        )
+    from specguard.roles import change_permission as _change_permission
+
+    result = _change_permission(identity, path, change_class, governance.roles)  # type: ignore[arg-type]
+    return _advisory(
+        {
+            **base,
+            "roles_configured": True,
+            "allowed": result.allowed,
+            "governing_role": result.governing_role,
+            "detail": result.reason,
+        }
+    )
 
 
 def get_scope_lock(repo_root: Path | None = None) -> dict[str, Any]:
@@ -192,6 +256,14 @@ def run() -> None:
     def specguard_list_watched_paths() -> dict[str, Any]:
         """List governed file patterns and whether roles enforcement is on."""
         return list_watched_paths()
+
+    @server.tool()
+    def specguard_check_permission(
+        identity: str, path: str, change_class: str
+    ) -> dict[str, Any]:
+        """Whether an identity may make a change ('edit' or 'scope-change') to a
+        watched file under the repo's roles rules. Advisory."""
+        return check_permission(identity, path, change_class)
 
     server.run()  # stdio transport
 
