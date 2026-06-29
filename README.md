@@ -6,7 +6,9 @@
 <br/>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-6366f1?style=flat-square)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Phase%200%20MVP-ef4444?style=flat-square)]()
+[![Status](https://img.shields.io/badge/Status-Phases%200–2%20shipped-22c55e?style=flat-square)]()
+[![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=flat-square)]()
+[![Providers](https://img.shields.io/badge/LLM-Anthropic%20·%20OpenAI%20·%20Gemini%20·%20OpenRouter-8b5cf6?style=flat-square)]()
 [![Built with Spec Kit](https://img.shields.io/badge/Built%20with-Spec%20Kit-fbbf24?style=flat-square&logoColor=black)](https://github.com/github/spec-kit)
 
 </div>
@@ -35,7 +37,9 @@ SpecGuard:   ❌  SCOPE CHANGE — 94% confidence
 
 ## How It Works
 
-Lock your goal and scope in `.specguard/lock.json`. SpecGuard does the rest on every PR.
+Lock your goal and scope in `.specguard/lock.json` — or, if you use Spec Kit or OpenSpec,
+let SpecGuard [derive it from the spec files you already maintain](#govern-the-specs-you-already-have-spec-kit--openspec).
+Then it does the rest on every PR.
 
 ```
 PR opened
@@ -233,8 +237,10 @@ Agents get three tools: `check_proposed_change` (full verdict for proposed conte
 |:---:|:---:|:---|
 | **0 — CI Gate** | 🟢 Shipped | GitHub Action · scope classification · role-based approval · branch protection |
 | **1 — Local Tools** | 🟢 Shipped | CLI (`specguard init`, `specguard check`) · pre-commit hook · MCP server |
-| **2 — GitHub App** | ⚪ Planned | Native Checks API · fork PR support · bot vs human identity · Spec Kit adapter |
-| **3 — Advanced** | ⚪ Planned | Section-level locking · monorepo support · multi-provider classifier |
+| **1.5 — Provider-Agnostic** | 🟢 Shipped | Anthropic · OpenAI · Gemini · OpenRouter behind one engine · Python 3.10+ |
+| **2 — Framework Adapters** | 🟢 Shipped | Spec Kit + OpenSpec governance overlay — auto-derive the lock from existing specs · explicit-lock override · source reporting |
+| **2 — GitHub App** | ⚪ Planned | Native Checks API · fork PR support · bot vs human identity · `/specguard approve` comment command · GitLab equivalent |
+| **3 — Advanced** | ⚪ Planned | Section-level locking · monorepo support · audit export |
 
 ---
 
