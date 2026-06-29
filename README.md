@@ -77,6 +77,8 @@ on:
   pull_request:
   pull_request_review:
     types: [submitted]
+  issue_comment:                           # `/specguard approve` comment command
+    types: [created]
 permissions:
   contents: read
   pull-requests: read
@@ -100,7 +102,23 @@ jobs:
         run: |
           run_id=$(gh api "repos/${{ github.repository }}/actions/workflows/specguard.yml/runs?event=pull_request&head_sha=${{ github.event.pull_request.head.sha }}" --jq '.workflow_runs[0].id // empty')
           [ -n "$run_id" ] && gh api -X POST "repos/${{ github.repository }}/actions/runs/$run_id/rerun"
+  comment-approve:                         # `/specguard approve` re-runs the check
+    # Grants no authority — it only retriggers the gate, which recomputes authorization
+    # from roles.yml at the trusted base. Anyone may comment; only a real role member clears a block.
+    if: github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/specguard approve')
+    runs-on: ubuntu-latest
+    permissions: {actions: write, pull-requests: read}
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head_sha=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}" --jq '.head.sha')
+          run_id=$(gh api "repos/${{ github.repository }}/actions/workflows/specguard.yml/runs?event=pull_request&head_sha=$head_sha" --jq '.workflow_runs[0].id // empty')
+          [ -n "$run_id" ] && gh api -X POST "repos/${{ github.repository }}/actions/runs/$run_id/rerun"
 ```
+
+> `specguard init` writes this file for you (including the `/specguard approve` trigger) — the snippet
+> above is what you get.
 
 **3.** Set `ANTHROPIC_API_KEY` as a repo secret, then require the `specguard` check under branch protection.
 
@@ -257,7 +275,8 @@ only a real role member can *approve*). Merge-time stays the only enforcement la
 | **1 — Local Tools** | 🟢 Shipped | CLI (`specguard init`, `specguard check`) · pre-commit hook · MCP server |
 | **1.5 — Provider-Agnostic** | 🟢 Shipped | Anthropic · OpenAI · Gemini · OpenRouter behind one engine · Python 3.10+ |
 | **2 — Framework Adapters** | 🟢 Shipped | Spec Kit + OpenSpec governance overlay — auto-derive the lock from existing specs · explicit-lock override · source reporting |
-| **2 — GitHub App** | ⚪ Planned | Native Checks API · fork PR support · bot vs human identity · `/specguard approve` comment command · GitLab equivalent |
+| **2 — Approval Commands** | 🟢 Shipped | `/specguard approve` PR comment · `specguard approve` CLI · MCP `check_permission` + write-time redirect |
+| **2 — GitHub App** | ⚪ Planned | Native Checks API · fork PR support · bot vs human identity · GitLab equivalent |
 | **3 — Advanced** | ⚪ Planned | Section-level locking · monorepo support · audit export |
 
 ---
