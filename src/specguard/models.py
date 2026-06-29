@@ -145,8 +145,16 @@ class PRContext(BaseModel):
     repo: str
 
 
+ApprovalSource = Literal["native-review", "comment-command", "cli"]
+
+
 class Approval(BaseModel):
-    """Latest review per reviewer; qualifies iff state == APPROVED."""
+    """Latest review per reviewer; qualifies iff state == APPROVED.
+
+    `source` is audit/provenance only — `has_qualified_approval` never reads it,
+    so all approval paths evaluate identically (constitution III).
+    """
 
     reviewer_login: str
     state: str
+    source: ApprovalSource = "native-review"

@@ -53,6 +53,8 @@ on:
   pull_request:
   pull_request_review:
     types: [submitted]
+  issue_comment:                           # `/specguard approve` comment command
+    types: [created]
 permissions:
   contents: read
   pull-requests: read
@@ -75,6 +77,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           run_id=$(gh api "repos/${{ github.repository }}/actions/workflows/specguard.yml/runs?event=pull_request&head_sha=${{ github.event.pull_request.head.sha }}" --jq '.workflow_runs[0].id // empty')
+          [ -n "$run_id" ] && gh api -X POST "repos/${{ github.repository }}/actions/runs/$run_id/rerun"
+  comment-approve:                         # `/specguard approve` re-runs the check
+    # The job grants no authority — it only retriggers the gate, which recomputes
+    # authorization from roles.yml at the trusted base. Anyone may comment; only a
+    # commenter who is genuinely in an authorizing role can actually clear a block.
+    if: github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/specguard approve')
+    runs-on: ubuntu-latest
+    permissions: {actions: write, pull-requests: read}
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head_sha=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}" --jq '.head.sha')
+          run_id=$(gh api "repos/${{ github.repository }}/actions/workflows/specguard.yml/runs?event=pull_request&head_sha=$head_sha" --jq '.workflow_runs[0].id // empty')
           [ -n "$run_id" ] && gh api -X POST "repos/${{ github.repository }}/actions/runs/$run_id/rerun"
 """
 
