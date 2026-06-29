@@ -30,6 +30,7 @@ from specguard.config import (
 )
 from specguard.engine import evaluate_pr
 from specguard.gitdiff import GitError
+from specguard.governance import GovernanceSource
 from specguard.localcheck import (
     CheckSnapshot,
     load_baseline_governance,
@@ -196,10 +197,16 @@ def _run_check(
         watch=governance.config.watch,
     )
 
+    # Re-derive against the actual changed paths so Spec Kit/OpenSpec feature scope
+    # matches what CI sees — same base_ref + changed_paths ⇒ same lock (FR-005).
+    governance = load_baseline_governance(
+        repo_root, base_ref, [c.path for c in snapshot.changes]
+    )
+
     if not snapshot.changes:
         if args.hook:
             return 0  # silent: zero friction on non-spec commits
-        _emit(args, [], snapshot)
+        _emit(args, [], snapshot, governance.source)
         return 0
 
     if adapter is None:
@@ -253,19 +260,24 @@ def _run_check(
                 )
                 future.cancel()
                 return 0
-        _emit(args, verdicts, snapshot)
+        _emit(args, verdicts, snapshot, governance.source)
         return 0  # the hook NEVER blocks (FR-006)
 
     verdicts = evaluate()
-    _emit(args, verdicts, snapshot)
+    _emit(args, verdicts, snapshot, governance.source)
     return 1 if localreport.would_block(verdicts) else 0
 
 
-def _emit(args: argparse.Namespace, verdicts: list[Verdict], snapshot: CheckSnapshot) -> None:
+def _emit(
+    args: argparse.Namespace,
+    verdicts: list[Verdict],
+    snapshot: CheckSnapshot,
+    source: GovernanceSource,
+) -> None:
     if getattr(args, "json", False):
-        print(localreport.render_json(verdicts, snapshot))
+        print(localreport.render_json(verdicts, snapshot, source))
     else:
-        print(localreport.render(verdicts, snapshot))
+        print(localreport.render(verdicts, snapshot, source))
 
 
 # ---------------------------------------------------------------------------

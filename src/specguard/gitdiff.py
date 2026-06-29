@@ -59,6 +59,32 @@ def show_file(repo_root: Path, sha: str, path: str) -> str | None:
     return result.stdout if result.returncode == 0 else None
 
 
+def ref_has_path(repo_root: Path, ref: str, path: str) -> bool:
+    """True when `path` (file or directory) exists in the tree at `ref`.
+
+    Used for framework detection at the trusted base revision — like show_file,
+    this reads the committed tree, never the working checkout.
+    """
+    result = subprocess.run(
+        ["git", "ls-tree", ref, "--", path],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0 and bool(result.stdout.strip())
+
+
+def ref_list_tree(repo_root: Path, ref: str, path: str) -> list[str]:
+    """Recursive file paths under `path` in the tree at `ref` (empty if none)."""
+    result = subprocess.run(
+        ["git", "ls-tree", "-r", "--name-only", ref, "--", path],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.splitlines() if result.returncode == 0 else []
+
+
 def watched_changes(
     repo_root: Path, base_sha: str, head_sha: str, watch: list[str]
 ) -> list[ChangedFile]:

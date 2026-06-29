@@ -7,9 +7,21 @@ surfaces preview the merge gate, they never enforce.
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
-from specguard.localcheck import CheckSnapshot
+from specguard.governance import GovernanceSource
 from specguard.models import Verdict
+
+if TYPE_CHECKING:
+    from specguard.localcheck import CheckSnapshot
+
+# Human-readable label for each governance source (SC-005).
+SOURCE_LABEL: dict[GovernanceSource, str] = {
+    "explicit-lock": "explicit lock (.specguard/lock.json)",
+    "spec-kit": "Spec Kit (.specify/)",
+    "openspec": "OpenSpec (openspec/)",
+    "plain": "plain",
+}
 
 ADVISORY_NOTICE = (
     "advisory only — local results do not enforce anything; the merge-time "
@@ -51,12 +63,14 @@ def _verdict_lines(verdict: Verdict) -> list[str]:
     return lines
 
 
-def render(verdicts: list[Verdict], snapshot: CheckSnapshot) -> str:
+def render(
+    verdicts: list[Verdict], snapshot: CheckSnapshot, source: GovernanceSource = "plain"
+) -> str:
     header = (
         f"specguard check — baseline {snapshot.base_ref} ({snapshot.base_sha}) "
         f"vs {snapshot.head_desc}"
     )
-    lines = [header, ""]
+    lines = [header, f"Governance source: {SOURCE_LABEL[source]}", ""]
     if not verdicts:
         lines.append("no watched spec files changed in this snapshot")
     for verdict in verdicts:
@@ -65,11 +79,14 @@ def render(verdicts: list[Verdict], snapshot: CheckSnapshot) -> str:
     return "\n".join(lines)
 
 
-def render_json(verdicts: list[Verdict], snapshot: CheckSnapshot) -> str:
+def render_json(
+    verdicts: list[Verdict], snapshot: CheckSnapshot, source: GovernanceSource = "plain"
+) -> str:
     return json.dumps(
         {
             "baseline": f"{snapshot.base_ref} ({snapshot.base_sha})",
             "compared_to": snapshot.head_desc,
+            "governance_source": source,
             "advisory": True,
             "notice": ADVISORY_NOTICE,
             "would_block": would_block(verdicts),
