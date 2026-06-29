@@ -12,8 +12,8 @@ from __future__ import annotations
 import json
 
 import pytest
-from tests.conftest import FakeAdapter, GitRepo, make_classification
 
+from conftest import FakeAdapter, GitRepo, make_classification
 from specguard.config import ConfigError
 from specguard.engine import evaluate_pr
 from specguard.gitdiff import diff_from_contents
