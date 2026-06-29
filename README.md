@@ -153,6 +153,29 @@ but missed the 90% recall gate (83%), so it stays opt-in, not the default.
 <!-- TODO: blocked-PR screenshot from the sandbox E2E run (T037) -->
 <!-- ![A blocked scope-change PR](assets/blocked-pr.png) -->
 
+### Govern the specs you already have (Spec Kit / OpenSpec)
+
+If your repo uses [Spec Kit](https://github.com/github/spec-kit) or
+[OpenSpec](https://github.com/Fission-AI/OpenSpec), you don't have to hand-author
+`.specguard/lock.json` — SpecGuard reads the goal and scope from the files those
+frameworks already maintain (it parses their public markdown; it never imports their code):
+
+| Source | Where the goal/scope comes from |
+|---|---|
+| **explicit lock** *(always wins)* | `.specguard/lock.json` |
+| **Spec Kit** | `.specify/memory/constitution.md` + the touched `specs/<feature>/spec.md` |
+| **OpenSpec** | `openspec/project.md` + the touched `openspec/changes/<id>/proposal.md` scope sections |
+| **plain** | no framework detected — behaves exactly as before |
+
+Selection is automatic from your repo layout, in that precedence order. Every run reports
+which source it used (`Governance source: …` in the CI summary and `specguard check` output),
+and an explicit `lock.json` always overrides framework derivation when you need to pin scope by hand.
+
+> The **Spec Kit** adapter is dogfooded on this repository. The **OpenSpec** adapter is built
+> against OpenSpec's documented file format but has not yet been validated against a live
+> OpenSpec project — if your layout differs, drop in an explicit `.specguard/lock.json` to pin
+> the scope.
+
 <!-- TODO: blocked-PR screenshot from the sandbox E2E run (T037) -->
 <!-- ![A blocked scope-change PR](assets/blocked-pr.png) -->
 

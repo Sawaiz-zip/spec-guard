@@ -113,12 +113,12 @@ scope sections.
 **Independent test**: In an OpenSpec fixture repo with no `lock.json`, a watched change contradicting a
 proposal's out-of-scope list classifies SCOPE_CHANGE with source `openspec`.
 
-- [ ] T017 [US2] Implement OpenSpec derivation in `src/specguard/governance.py` and wire it into the
+- [X] T017 [US2] Implement OpenSpec derivation in `src/specguard/governance.py` and wire it into the
   `resolve_lock` openspec branch: goal from `project.md`; `scope_in`/`scope_out` from touched proposals'
   scope sections; union across touched change dirs; deterministic tie-break by directory name (R3).
-- [ ] T018 [P] [US2] Tests in `tests/test_governance.py`: OpenSpec derivation from a fixture proposal,
+- [X] T018 [P] [US2] Tests in `tests/test_governance.py`: OpenSpec derivation from a fixture proposal,
   multi-proposal union, and precedence Spec Kit > OpenSpec when both directories exist.
-- [ ] T019 [US2] Record the honesty caveat (OpenSpec is documented-format, not live-validated this phase)
+- [X] T019 [US2] Record the honesty caveat (OpenSpec is documented-format, not live-validated this phase)
   in `specs/004-framework-adapters/quickstart.md` and the `README.md` frameworks note (R3).
 
 **Checkpoint**: Both frameworks derive; OpenSpec flagged as best-effort pending live validation.

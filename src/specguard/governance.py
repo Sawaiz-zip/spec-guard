@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Literal
 
 from specguard.config import LOCK_PATH, parse_lock
-from specguard.gitdiff import ref_has_path, show_file
+from specguard.gitdiff import ref_has_path, ref_list_tree, show_file
 from specguard.models import ScopeLock
 
 GovernanceSource = Literal["explicit-lock", "spec-kit", "openspec", "plain"]
@@ -38,6 +38,10 @@ OPENSPEC_DIR = "openspec"
 # Spec Kit files (relative to repo root).
 SPECKIT_CONSTITUTION = ".specify/memory/constitution.md"
 SPECKIT_SPECS_DIR = "specs"
+
+# OpenSpec files (relative to repo root).
+OPENSPEC_PROJECT = "openspec/project.md"
+OPENSPEC_CHANGES_DIR = "openspec/changes"
 
 _OUT_OF_SCOPE_MARKERS = ("out of scope", "out-of-scope", "non-goal", "non-goals")
 _IN_SCOPE_MARKERS = ("in scope", "in-scope")
@@ -76,8 +80,11 @@ def resolve_lock(
         if derived is not None:
             return derived, "spec-kit"
 
-    # 3. OpenSpec — derivation lands in spec 004 US2; until then fall through.
-    #    (Detection stays so the precedence slot is reserved and visible.)
+    # 3. OpenSpec.
+    if ref_has_path(repo_root, base_ref, OPENSPEC_DIR):
+        derived = _derive_openspec(ctx)
+        if derived is not None:
+            return derived, "openspec"
 
     # 4. Plain / unconfigured — unchanged from prior behavior (FR-011).
     return None, "plain"
@@ -166,6 +173,78 @@ def _feature_title(spec_text: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
+# OpenSpec adapter
+#
+# Built against the documented OpenSpec layout (openspec/project.md + per-change
+# proposal.md scope sections); NOT live-validated against a real OpenSpec repo this
+# phase (spec 004 research R3). Spec Kit is the dogfooded path; an explicit lock is
+# the override when a real OpenSpec layout differs from the documented one.
+# ---------------------------------------------------------------------------
+
+_WHAT_CHANGES_HEADING = "what changes"
+
+
+def _derive_openspec(ctx: DerivationContext) -> ScopeLock | None:
+    """Goal from openspec/project.md; scope from the touched change proposals."""
+    project = show_file(ctx.repo_root, ctx.base_ref, OPENSPEC_PROJECT)
+    goal = _openspec_goal(project)
+
+    scope_out: list[str] = []
+    scope_in: list[str] = []
+    for change_dir in _openspec_change_dirs(ctx):
+        proposal = show_file(ctx.repo_root, ctx.base_ref, f"{change_dir}/proposal.md")
+        if proposal is None:
+            continue
+        if goal is None:
+            goal = _feature_title(proposal)
+        scope_out += _extract_scope_items(proposal, _OUT_OF_SCOPE_MARKERS)
+        scope_in += _extract_scope_items(proposal, _IN_SCOPE_MARKERS)
+        scope_in += _bullets_under_heading(proposal, _WHAT_CHANGES_HEADING)
+
+    if goal is None:
+        return None
+    return ScopeLock(
+        goal=goal,
+        scope_in=_dedupe(scope_in),
+        scope_out=_dedupe(scope_out),
+        locked_by=f"openspec:{OPENSPEC_PROJECT}",
+    )
+
+
+def _openspec_goal(project: str | None) -> str | None:
+    if project is None:
+        return None
+    title = _first_heading(project, level=1)
+    if title is None:
+        return None
+    sentence = _first_sentence_after_heading(project, title)
+    return f"{title}: {sentence}" if sentence else title
+
+
+def _openspec_change_dirs(ctx: DerivationContext) -> list[str]:
+    """Change directories that govern: the ones the diff touches, else the
+    lexicographically-first change dir (deterministic tie-break — R3)."""
+    touched: list[str] = []
+    for path in ctx.changed_paths:
+        parts = Path(path).parts
+        if len(parts) >= 3 and parts[0] == "openspec" and parts[1] == "changes":
+            change_dir = f"{OPENSPEC_CHANGES_DIR}/{parts[2]}"
+            if change_dir not in touched:
+                touched.append(change_dir)
+    if touched:
+        return touched
+    all_files = ref_list_tree(ctx.repo_root, ctx.base_ref, OPENSPEC_CHANGES_DIR)
+    dirs = sorted(
+        {
+            f"{OPENSPEC_CHANGES_DIR}/{Path(f).parts[2]}"
+            for f in all_files
+            if len(Path(f).parts) >= 3
+        }
+    )
+    return dirs[:1]
+
+
+# ---------------------------------------------------------------------------
 # Tolerant markdown scanning (no markdown library — research.md R1)
 # ---------------------------------------------------------------------------
 
@@ -229,6 +308,27 @@ def _first_sentence_after_heading(text: str, heading_title: str) -> str | None:
             joined = " ".join(paragraph)
             return re.split(r"(?<=[.!?])\s", joined, maxsplit=1)[0].strip()
     return None
+
+
+def _bullets_under_heading(text: str, heading_substr: str) -> list[str]:
+    """Bullets directly under any heading whose title contains `heading_substr`."""
+    out: list[str] = []
+    lines = _logical_lines(text)
+    for i, line in enumerate(lines):
+        parsed = _heading(line)
+        if not (parsed and heading_substr in parsed[1].lower()):
+            continue
+        collected: list[str] = []
+        for body in lines[i + 1 :]:
+            if _heading(body):
+                break
+            bullet = _bullet(body)
+            if bullet:
+                collected.append(bullet)
+            elif body.strip() == "" and collected:
+                break
+        out += collected
+    return out
 
 
 def _extract_scope_items(text: str, markers: tuple[str, ...]) -> list[str]:

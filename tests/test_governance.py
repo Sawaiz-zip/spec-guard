@@ -281,3 +281,120 @@ def test_parity_derived_equals_hand_authored_and_ci_equals_local(
     assert derived_verdict.classification == hand_verdict.classification
     assert derived_verdict.outcome == hand_verdict.outcome
     assert derived_verdict.reason == hand_verdict.reason
+
+
+# ---------------------------------------------------------------------------
+# User Story 2 — OpenSpec derivation (T018)
+# ---------------------------------------------------------------------------
+
+OPENSPEC_PROJECT = """\
+# Widgets Platform
+
+A platform for managing widgets across many teams.
+"""
+
+PROPOSAL_AUTH = """\
+# Add Authentication
+
+## Why
+
+Users need to sign in.
+
+## What Changes
+
+- add JWT login
+- add session management
+
+## Out of Scope
+
+- biometric auth
+- hardware security keys
+"""
+
+PROPOSAL_BILLING = """\
+# Add Billing
+
+## What Changes
+
+- add invoices
+
+## Non-Goals
+
+- cryptocurrency payments
+"""
+
+
+def _openspec_repo(git_repo: GitRepo) -> str:
+    git_repo.write("openspec/project.md", OPENSPEC_PROJECT)
+    git_repo.write("openspec/changes/add-auth/proposal.md", PROPOSAL_AUTH)
+    git_repo.write("openspec/changes/add-billing/proposal.md", PROPOSAL_BILLING)
+    git_repo.write("README.md", "hello")
+    return git_repo.commit_all("openspec layout")
+
+
+def test_openspec_derives_from_touched_proposal(git_repo: GitRepo) -> None:
+    base = _openspec_repo(git_repo)
+
+    lock, source = resolve_lock(
+        git_repo.root, base, ["openspec/changes/add-auth/proposal.md"]
+    )
+
+    assert source == "openspec"
+    assert lock is not None
+    assert lock.goal.startswith("Widgets Platform")
+    assert "add JWT login" in lock.scope_in
+    assert "add session management" in lock.scope_in
+    assert "biometric auth" in lock.scope_out
+    assert "hardware security keys" in lock.scope_out
+    # The billing proposal was not touched, so its items are absent.
+    assert "add invoices" not in lock.scope_in
+    assert lock.locked_by == "openspec:openspec/project.md"
+
+
+def test_openspec_unions_touched_proposals(git_repo: GitRepo) -> None:
+    base = _openspec_repo(git_repo)
+
+    lock, _ = resolve_lock(
+        git_repo.root,
+        base,
+        [
+            "openspec/changes/add-auth/proposal.md",
+            "openspec/changes/add-billing/proposal.md",
+        ],
+    )
+
+    assert lock is not None
+    assert {"add JWT login", "add session management", "add invoices"}.issubset(
+        set(lock.scope_in)
+    )
+    assert {"biometric auth", "hardware security keys", "cryptocurrency payments"}.issubset(
+        set(lock.scope_out)
+    )
+
+
+def test_openspec_falls_back_to_first_change_dir(git_repo: GitRepo) -> None:
+    """No change dir touched ⇒ the lexicographically-first proposal governs (R3)."""
+    base = _openspec_repo(git_repo)
+
+    # README.md touches no openspec/changes/<id>/ directory.
+    lock, source = resolve_lock(git_repo.root, base, ["README.md"])
+
+    assert source == "openspec"
+    assert lock is not None
+    # 'add-auth' sorts before 'add-billing', so its scope governs deterministically.
+    assert "add JWT login" in lock.scope_in
+    assert "add invoices" not in lock.scope_in
+
+
+def test_spec_kit_wins_over_openspec(git_repo: GitRepo) -> None:
+    """Precedence: when both frameworks are present, Spec Kit governs (R4)."""
+    git_repo.write(".specify/memory/constitution.md", CONSTITUTION)
+    git_repo.write("openspec/project.md", OPENSPEC_PROJECT)
+    git_repo.write("openspec/changes/add-auth/proposal.md", PROPOSAL_AUTH)
+    base = git_repo.commit_all("both frameworks")
+
+    lock, source = resolve_lock(git_repo.root, base, [])
+
+    assert source == "spec-kit"
+    assert lock is not None
+    assert "Merge-Time Enforcement Is the Security Layer" in lock.goal
