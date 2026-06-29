@@ -125,16 +125,18 @@ proposal's out-of-scope list classifies SCOPE_CHANGE with source `openspec`.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T020 Degrade & error handling in `src/specguard/governance.py` + tests: detected framework with
-  empty/missing scope sections ⇒ goal with empty lists (no crash); garbled required framework file ⇒
-  `ConfigError` (exit 2 parity with malformed `lock.json`) (FR-007).
-- [ ] T021 [P] Remove the obsolete `"adapter coming; using plain mode"` notice in `src/specguard/ci.py`
-  (replaced by real source reporting from T012); confirm no surface still claims framework detection is a
-  no-op (FR-010).
-- [ ] T022 [P] Update `README.md` (frameworks/governance-overlay section: Spec Kit + OpenSpec auto-derive,
-  explicit-lock override) and verify `CLAUDE.md` plan pointer is current.
-- [ ] T023 Final gate: `pytest -q && ruff check src tests && mypy src` all green; record final test count
-  and the "Spec Kit dogfooded / OpenSpec documented-only" status in this tasks file's notes.
+- [X] T020 Degrade & error handling in `src/specguard/governance.py` + tests: detected framework with
+  empty/missing scope sections ⇒ goal with empty lists (no crash); no derivable goal ⇒ fall through to
+  plain; garbled (non-UTF-8) framework file ⇒ `ConfigError` via the `_read` guard (exit 2 parity with
+  malformed `lock.json`) (FR-007).
+- [X] T021 [P] Removed the obsolete `"adapter coming; using plain mode"` notice in `src/specguard/ci.py`
+  (MVP, replaced by real source reporting from T012); also removed the now-dead `detect_framework()`
+  log-only seam in `config.py` + its tests (superseded by `governance.ref_has_path` detection) — no
+  surface claims framework detection is a no-op (FR-010).
+- [X] T022 [P] Updated `README.md` ("Govern the specs you already have" section: Spec Kit + OpenSpec
+  auto-derive, precedence table, explicit-lock override, OpenSpec best-effort caveat); `CLAUDE.md` plan
+  pointer updated to 004 during planning.
+- [X] T023 Final gate: `pytest && ruff check src tests && mypy src` all green; status recorded in Notes.
 
 ---
 
@@ -168,6 +170,18 @@ proposal's out-of-scope list classifies SCOPE_CHANGE with source `openspec`.
 ## Notes
 
 - No new runtime dependency (research R1 — stdlib line scanning).
-- Every framework read goes through `show_file(repo_root, base_ref, …)`; base-ref isolation is enforced by
-  T011 (constitution I).
+- Every framework read goes through `show_file(repo_root, base_ref, …)` (wrapped by `_read` for loud
+  non-UTF-8 errors); base-ref isolation is enforced by T011 (constitution I).
 - Source-reporting (T012) is the visible end of the old "adapter coming" placeholder (FR-010).
+
+### Final status (all phases complete)
+
+- **All 24 tasks complete** (T001–T023 + T005a). 200 tests pass (was 187; +16 governance, −3 obsolete
+  `detect_framework` tests); ruff + mypy strict clean.
+- **Spec Kit**: dogfooded against this repository — derives goal + the constitution's 5 out-of-scope
+  items (SC-004). In practice this repo resolves to `explicit-lock` because it ships a `.specguard/lock.json`
+  (correct precedence, FR-002); the Spec Kit path is validated by direct derivation + tests.
+- **OpenSpec**: implemented against the documented format, NOT live-validated this phase (R3) — README +
+  quickstart say so; explicit-lock is the override.
+- **Honest deviations**: detection lives in `gitdiff.ref_has_path` + `governance.py` (not `config.py`,
+  to avoid an import cycle); the dead `config.detect_framework` seam was removed in Polish.

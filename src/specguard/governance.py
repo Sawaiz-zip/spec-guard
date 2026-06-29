@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from specguard.config import LOCK_PATH, parse_lock
+from specguard.config import LOCK_PATH, ConfigError, parse_lock
 from specguard.gitdiff import ref_has_path, ref_list_tree, show_file
 from specguard.models import ScopeLock
 
@@ -56,6 +56,17 @@ class DerivationContext:
     changed_paths: list[str] = field(default_factory=list)
 
 
+def _read(repo_root: Path, base_ref: str, path: str) -> str | None:
+    """Read a framework file at the base ref, raising ConfigError (loud, like a
+    malformed lock.json) when the content is not valid UTF-8 text (FR-007)."""
+    try:
+        return show_file(repo_root, base_ref, path)
+    except (UnicodeDecodeError, OSError) as exc:
+        raise ConfigError(
+            f"{base_ref}:{path}: could not read as UTF-8 text — {exc}"
+        ) from exc
+
+
 def resolve_lock(
     repo_root: Path,
     base_ref: str,
@@ -70,7 +81,7 @@ def resolve_lock(
     ctx = DerivationContext(repo_root, base_ref, list(changed_paths or []))
 
     # 1. Explicit lock wins outright — no framework file is even read (FR-002).
-    lock_text = show_file(repo_root, base_ref, LOCK_PATH)
+    lock_text = _read(repo_root, base_ref, LOCK_PATH)
     if lock_text is not None:
         return parse_lock(lock_text, f"{base_ref}:{LOCK_PATH}"), "explicit-lock"
 
@@ -102,7 +113,7 @@ def _derive_speckit(ctx: DerivationContext) -> ScopeLock | None:
     in the directories touched by `changed_paths` refine the scope (R2 multi-feature
     rule). Returns None (→ plain) only when no goal can be derived at all.
     """
-    constitution = show_file(ctx.repo_root, ctx.base_ref, SPECKIT_CONSTITUTION)
+    constitution = _read(ctx.repo_root, ctx.base_ref, SPECKIT_CONSTITUTION)
 
     goal = _speckit_goal(constitution)
     scope_out: list[str] = []
@@ -112,7 +123,7 @@ def _derive_speckit(ctx: DerivationContext) -> ScopeLock | None:
         scope_in += _extract_scope_items(constitution, _IN_SCOPE_MARKERS)
 
     for feature_dir in _touched_feature_dirs(ctx.changed_paths):
-        spec_text = show_file(
+        spec_text = _read(
             ctx.repo_root, ctx.base_ref, f"{feature_dir}/spec.md"
         )
         if spec_text is None:
@@ -186,13 +197,13 @@ _WHAT_CHANGES_HEADING = "what changes"
 
 def _derive_openspec(ctx: DerivationContext) -> ScopeLock | None:
     """Goal from openspec/project.md; scope from the touched change proposals."""
-    project = show_file(ctx.repo_root, ctx.base_ref, OPENSPEC_PROJECT)
+    project = _read(ctx.repo_root, ctx.base_ref, OPENSPEC_PROJECT)
     goal = _openspec_goal(project)
 
     scope_out: list[str] = []
     scope_in: list[str] = []
     for change_dir in _openspec_change_dirs(ctx):
-        proposal = show_file(ctx.repo_root, ctx.base_ref, f"{change_dir}/proposal.md")
+        proposal = _read(ctx.repo_root, ctx.base_ref, f"{change_dir}/proposal.md")
         if proposal is None:
             continue
         if goal is None:

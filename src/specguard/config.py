@@ -147,15 +147,6 @@ def load_roles(repo_root: Path) -> RolesConfig | None:
     return parse_roles(text, str(roles_path))
 
 
-def detect_framework(repo_root: Path) -> str | None:
-    """Log-only seam for Phase 2 adapters (constitution II: no adapter behavior)."""
-    if (repo_root / ".specify").is_dir():
-        return "speckit"
-    if (repo_root / "openspec").is_dir():
-        return "openspec"
-    return None
-
-
 def _first_error(exc: ValidationError) -> str:
     err = exc.errors()[0]
     location = ".".join(str(part) for part in err["loc"]) or "(root)"

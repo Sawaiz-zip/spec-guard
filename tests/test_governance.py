@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from tests.conftest import FakeAdapter, GitRepo, make_classification
 
+from specguard.config import ConfigError
 from specguard.engine import evaluate_pr
 from specguard.gitdiff import diff_from_contents
 from specguard.governance import resolve_lock
@@ -384,6 +386,37 @@ def test_openspec_falls_back_to_first_change_dir(git_repo: GitRepo) -> None:
     # 'add-auth' sorts before 'add-billing', so its scope governs deterministically.
     assert "add JWT login" in lock.scope_in
     assert "add invoices" not in lock.scope_in
+
+
+# ---------------------------------------------------------------------------
+# Polish — degrade & error handling (T020)
+# ---------------------------------------------------------------------------
+
+
+def test_malformed_framework_file_raises_configerror(git_repo: GitRepo) -> None:
+    """FR-007: a framework file that is not valid UTF-8 fails loudly (ConfigError),
+    like a malformed lock.json — never a raw traceback / silent pass."""
+    path = git_repo.root / ".specify/memory/constitution.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"# Title\n\xff\xfe not valid utf-8 \x80\n")
+    base = git_repo.commit_all("garbled constitution")
+
+    with pytest.raises(ConfigError):
+        resolve_lock(git_repo.root, base, [])
+
+
+def test_framework_without_derivable_goal_degrades_to_plain(git_repo: GitRepo) -> None:
+    """FR-007: Spec Kit detected but no goal derivable (no H1) ⇒ fall through to
+    plain rather than crash or lock against nothing."""
+    git_repo.write(
+        ".specify/memory/constitution.md", "no headings here, just prose.\n"
+    )
+    base = git_repo.commit_all("goalless constitution")
+
+    lock, source = resolve_lock(git_repo.root, base, [])
+
+    assert lock is None
+    assert source == "plain"
 
 
 def test_spec_kit_wins_over_openspec(git_repo: GitRepo) -> None:

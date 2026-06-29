@@ -8,7 +8,6 @@ import pytest
 
 from specguard.config import (
     ConfigError,
-    detect_framework,
     is_configured,
     load_config,
     load_lock,
@@ -131,19 +130,6 @@ class TestOpusGuardrail:
 
         with pytest.raises(ValueError, match="blocked"):
             Config(model="claude-opus-4-8-20260115")
-
-
-class TestFrameworkDetection:
-    def test_speckit(self, tmp_path):
-        (tmp_path / ".specify").mkdir()
-        assert detect_framework(tmp_path) == "speckit"
-
-    def test_openspec(self, tmp_path):
-        (tmp_path / "openspec").mkdir()
-        assert detect_framework(tmp_path) == "openspec"
-
-    def test_plain(self, tmp_path):
-        assert detect_framework(tmp_path) is None
 
 
 class TestPathMatching:
