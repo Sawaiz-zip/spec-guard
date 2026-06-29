@@ -12,12 +12,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from pathlib import Path
 
 from specguard import localreport
+from specguard.approvals import ApprovalsError, submit_approval_review
 from specguard.classifier import ClassifierAdapter
 from specguard.config import (
     CONFIG_PATH,
@@ -152,6 +154,14 @@ def main(argv: list[str] | None = None, adapter: ClassifierAdapter | None = None
         help="pre-commit hook mode: always exit 0, silent when nothing watched changed",
     )
 
+    approve_parser = subparsers.add_parser(
+        "approve", help="approve a PR's scope change from the terminal"
+    )
+    approve_parser.add_argument("pr_number", type=int, help="the pull request number")
+    approve_parser.add_argument(
+        "--repo", help="owner/name (default: inferred from the origin remote)"
+    )
+
     subparsers.add_parser("mcp", help="run the stdio MCP server (needs the [mcp] extra)")
 
     args = parser.parse_args(argv)
@@ -159,6 +169,8 @@ def main(argv: list[str] | None = None, adapter: ClassifierAdapter | None = None
         return _cmd_init(args)
     if args.command == "check":
         return _cmd_check(args, adapter)
+    if args.command == "approve":
+        return _cmd_approve(args)
     return _cmd_mcp()
 
 
@@ -294,6 +306,57 @@ def _emit(
         print(localreport.render_json(verdicts, snapshot, source))
     else:
         print(localreport.render(verdicts, snapshot, source))
+
+
+# ---------------------------------------------------------------------------
+# approve
+# ---------------------------------------------------------------------------
+
+_REPO_URL_RE = re.compile(r"github\.com[:/](?P<repo>[^/]+/[^/]+?)(?:\.git)?/?$")
+
+
+def _resolve_repo(repo_root: Path) -> str | None:
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "remote", "get-url", "origin"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    match = _REPO_URL_RE.search(result.stdout.strip())
+    return match.group("repo") if match else None
+
+
+def _cmd_approve(args: argparse.Namespace) -> int:
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if not token:
+        print(
+            "specguard: error: set GH_TOKEN or GITHUB_TOKEN to a token with "
+            "pull-request write access before approving",
+            file=sys.stderr,
+        )
+        return 2
+
+    repo = args.repo or _resolve_repo(Path.cwd())
+    if not repo:
+        print(
+            "specguard: error: could not determine the repository — pass "
+            "--repo owner/name (no GitHub origin remote found)",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        submit_approval_review(repo, args.pr_number, token)
+    except ApprovalsError as exc:
+        print(f"specguard: error: {exc}", file=sys.stderr)
+        return 2
+
+    print(f"specguard: approved {repo}#{args.pr_number} — the gate will re-evaluate")
+    return 0
 
 
 # ---------------------------------------------------------------------------

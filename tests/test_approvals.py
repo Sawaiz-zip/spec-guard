@@ -12,6 +12,7 @@ from specguard.approvals import (
     fetch_approvals,
     fetch_comment_approvals,
     has_qualified_approval,
+    submit_approval_review,
 )
 from specguard.models import Approval, RolesConfig
 
@@ -176,6 +177,28 @@ class TestFetchCommentApprovals:
         )
         assert seen[0].url.path == "/repos/acme/widgets/issues/7/comments"
         assert seen[0].headers["Authorization"] == "Bearer tok"
+
+
+class TestSubmitApprovalReview:
+    def test_posts_approve_event_to_reviews_endpoint(self):
+        seen: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            return httpx.Response(200, content="{}")
+
+        submit_approval_review(
+            "acme/widgets", 7, "tok", transport=httpx.MockTransport(handler)
+        )
+        assert seen[0].method == "POST"
+        assert seen[0].url.path == "/repos/acme/widgets/pulls/7/reviews"
+        assert json.loads(seen[0].content) == {"event": "APPROVE"}
+        assert seen[0].headers["Authorization"] == "Bearer tok"
+
+    def test_permission_failure_raises_approvals_error(self):
+        transport = httpx.MockTransport(lambda request: httpx.Response(403))
+        with pytest.raises(ApprovalsError):
+            submit_approval_review("acme/widgets", 7, "tok", transport=transport)
 
 
 class TestCrossPathParity:

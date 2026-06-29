@@ -8,8 +8,10 @@ can trust the config.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from specguard.config import path_matches
-from specguard.models import RolesConfig, Rule
+from specguard.models import ChangeClass, RolesConfig, Rule
 
 
 def member_logins(roles_config: RolesConfig, role: str) -> list[str]:
@@ -64,3 +66,41 @@ def required_approver_roles(path: str, roles_config: RolesConfig) -> list[str]:
     if rule is None or rule.scope_changes is None or rule.scope_changes.approve is None:
         return []
     return [rule.scope_changes.approve]
+
+
+@dataclass
+class PermissionResult:
+    """Answer to a permission query: may `login` make this change to this file?"""
+
+    allowed: bool
+    governing_role: str | None
+    reason: str
+
+
+def change_permission(
+    login: str, path: str, change_class: ChangeClass, roles_config: RolesConfig
+) -> PermissionResult:
+    """Whether `login` may make `change_class` to `path` under the roles rules.
+
+    Mirrors the engine's permissiveness: when no rule governs the path the answer
+    is yes (the gate would warn, not block). `edit` uses the deterministic edit
+    rule; `scope-change` uses the scope-change approver role.
+    """
+    if change_class == "edit":
+        rule = matching_rule(path, roles_config)
+        role = rule.edit if rule is not None else None
+        if role is None:
+            return PermissionResult(True, None, f"no edit rule governs {path}")
+        allowed = is_member(login, role, roles_config)
+        verb = "may" if allowed else "may not"
+        return PermissionResult(allowed, role, f"{login} {verb} edit {path} ({role})")
+
+    required = required_approver_roles(path, roles_config)
+    if not required:
+        return PermissionResult(True, None, f"no scope-change rule governs {path}")
+    role = required[0]
+    allowed = is_member(login, role, roles_config)
+    verb = "may" if allowed else "may not"
+    return PermissionResult(
+        allowed, role, f"{login} {verb} approve scope changes to {path} ({role})"
+    )

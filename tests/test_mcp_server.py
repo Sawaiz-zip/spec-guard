@@ -24,6 +24,97 @@ def configured_repo(git_repo):
     return git_repo
 
 
+ROLES_YML = (
+    "roles:\n  architect: [alice]\n"
+    "rules:\n"
+    "  README.md:\n    scope_changes: {approve: architect}\n"
+    "  CLAUDE.md:\n    edit: architect\n"
+)
+
+
+@pytest.fixture
+def configured_repo_with_roles(git_repo):
+    git_repo.write("README.md", "v1\n")
+    git_repo.write(".specguard/lock.json", LOCK)
+    git_repo.write(".specguard/roles.yml", ROLES_YML)
+    git_repo.commit_all("base")
+    return git_repo
+
+
+class TestCheckPermission:
+    def test_scope_change_allowed_for_role_member(self, configured_repo_with_roles):
+        result = mcp_server.check_permission(
+            "alice", "README.md", "scope-change",
+            repo_root=configured_repo_with_roles.root,
+        )
+        assert result["roles_configured"] is True
+        assert result["allowed"] is True
+        assert result["governing_role"] == "architect"
+        assert result["advisory"] is True
+
+    def test_scope_change_denied_for_outsider(self, configured_repo_with_roles):
+        result = mcp_server.check_permission(
+            "mallory", "README.md", "scope-change",
+            repo_root=configured_repo_with_roles.root,
+        )
+        assert result["allowed"] is False
+        assert result["governing_role"] == "architect"
+
+    def test_edit_allowed_and_denied(self, configured_repo_with_roles):
+        root = configured_repo_with_roles.root
+        assert mcp_server.check_permission(
+            "alice", "CLAUDE.md", "edit", repo_root=root
+        )["allowed"] is True
+        assert mcp_server.check_permission(
+            "mallory", "CLAUDE.md", "edit", repo_root=root
+        )["allowed"] is False
+
+    def test_no_roles_is_permissive(self, configured_repo):
+        result = mcp_server.check_permission(
+            "anyone", "README.md", "scope-change", repo_root=configured_repo.root
+        )
+        assert result["roles_configured"] is False
+        assert result["allowed"] is True
+
+    def test_invalid_change_class_errors(self, configured_repo_with_roles):
+        result = mcp_server.check_permission(
+            "alice", "README.md", "delete",
+            repo_root=configured_repo_with_roles.root,
+        )
+        assert "error" in result
+
+
+class TestRedirect:
+    def _scope_change(self):
+        return FakeAdapter(
+            responses={
+                "README.md": make_classification(
+                    "SCOPE_CHANGE", 0.94, "HIGH", ["SaaS pricing"], "Added pricing"
+                )
+            }
+        )
+
+    def test_would_block_scope_change_includes_redirect(
+        self, configured_repo_with_roles
+    ):
+        result = mcp_server.check_proposed_change(
+            "README.md", "v1\n\n## Pricing\n$9/mo\n",
+            repo_root=configured_repo_with_roles.root, adapter=self._scope_change(),
+        )
+        assert result["verdict"]["outcome"] == "BLOCK"
+        redirect = result["redirect"]
+        assert redirect["would_block"] is True
+        assert redirect["required_roles"] == ["architect"]
+        assert "proposal" in redirect["suggestion"]
+
+    def test_additive_change_has_no_redirect(self, configured_repo_with_roles):
+        result = mcp_server.check_proposed_change(
+            "README.md", "v1 with a typo fixed\n",
+            repo_root=configured_repo_with_roles.root, adapter=FakeAdapter(),
+        )
+        assert "redirect" not in result
+
+
 class TestCheckProposedChange:
     def test_scope_change_verdict_with_advisory_flag(self, configured_repo):
         adapter = FakeAdapter(

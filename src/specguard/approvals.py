@@ -71,6 +71,28 @@ def fetch_approvals(
     return [Approval(reviewer_login=login, state=state) for login, state in latest.items()]
 
 
+def submit_approval_review(
+    repo: str,
+    pr_number: int,
+    token: str,
+    transport: httpx.BaseTransport | None = None,
+) -> None:
+    """Submit an approving review on the PR (the CLI approval path, FR-004).
+
+    A native review the existing `fetch_approvals` already recognizes — no second
+    evaluation path. Raises ApprovalsError on a missing/invalid token or
+    insufficient permission so the CLI can fail loudly without recording anything.
+    """
+    url = f"{API_BASE}/repos/{repo}/pulls/{pr_number}/reviews"
+    headers = {"Authorization": f"Bearer {token}", **_HEADERS}
+    try:
+        with httpx.Client(timeout=30.0, transport=transport) as client:
+            response = client.post(url, headers=headers, json={"event": "APPROVE"})
+            response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise ApprovalsError(f"could not submit approval review: {exc}") from exc
+
+
 def _parse_dt(value: str) -> datetime:
     """Parse a GitHub ISO-8601 timestamp (Zulu) — 3.10-safe (no bare 'Z')."""
     return datetime.fromisoformat(value.replace("Z", "+00:00"))

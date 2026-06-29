@@ -68,13 +68,13 @@ commit) clears the block; a non-authorized commenter's identical comment does no
 **Independent test**: `specguard approve <pr>` as an authorized caller submits a review the gate then
 recognizes; without a token it exits 2 and posts nothing.
 
-- [ ] T008 [US2] `src/specguard/approvals.py`: add `submit_approval_review(repo, pr_number, token,
+- [X] T008 [US2] `src/specguard/approvals.py`: add `submit_approval_review(repo, pr_number, token,
   transport=None) -> None` — POST `{event: "APPROVE"}` to the PR reviews endpoint; raise a loud error on
   missing/invalid token or insufficient permission (records nothing).
-- [ ] T009 [US2] `src/specguard/cli.py`: add the `approve <pr-number>` subcommand — resolve the repo from
+- [X] T009 [US2] `src/specguard/cli.py`: add the `approve <pr-number>` subcommand — resolve the repo from
   the `origin` remote and the token from `GH_TOKEN`/`GITHUB_TOKEN`, call `submit_approval_review`; exit 0
   with a confirmation line, exit 2 with an actionable message on missing token/repo/permission (FR-004).
-- [ ] T010 [P] [US2] `tests/test_cli.py`: `approve` success asserts the review POST (mock transport);
+- [X] T010 [P] [US2] `tests/test_cli.py`: `approve` success asserts the review POST (mock transport);
   missing token → exit 2 and no POST.
 
 **Checkpoint**: all three approval paths (review, comment, CLI) clear a block identically (SC-003).
@@ -86,26 +86,26 @@ recognizes; without a token it exits 2 and posts nothing.
 **Independent test**: `check_permission` matches the roles rules; a would-block proposed change returns a
 `redirect` naming the role + proposal suggestion; an additive change does not.
 
-- [ ] T011 [US3] `src/specguard/roles.py`: add `ChangeClass = Literal["edit", "scope-change"]` (in
+- [X] T011 [US3] `src/specguard/roles.py`: add `ChangeClass = Literal["edit", "scope-change"]` (in
   `models.py`), a `PermissionResult` dataclass (`allowed`, `governing_role`, `reason`), and
   `change_permission(login, path, change_class, roles_config) -> PermissionResult` reusing
   `matching_rule` / `is_edit_authorized` / `required_approver_roles` (pure, no I/O).
-- [ ] T012 [US3] `src/specguard/mcp_server.py`: add the `specguard_check_permission(identity, path,
+- [X] T012 [US3] `src/specguard/mcp_server.py`: add the `specguard_check_permission(identity, path,
   change_class)` tool (plain function + `@server.tool()` wrapper, advisory payload); and add a `redirect`
   object to `check_proposed_change`'s payload ONLY when the verdict would block — required role(s) +
   "draft this as a separate change/proposal instead of editing <file> directly"; absent for additive
   (FR-008, constitution IV).
-- [ ] T013 [P] [US3] `tests/test_mcp_server.py`: `check_permission` yes/no for both `edit` and
+- [X] T013 [P] [US3] `tests/test_mcp_server.py`: `check_permission` yes/no for both `edit` and
   `scope-change`; `redirect` present on a would-block SCOPE_CHANGE response, absent on an additive one.
 
 **Checkpoint**: the MCP plugin contains the agent, not just classifies.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T014 [P] `README.md`: document the three approval paths (native review · `/specguard approve`
+- [X] T014 [P] `README.md`: document the three approval paths (native review · `/specguard approve`
   comment · `specguard approve <pr>` CLI) and that merge-time stays the only enforcement; add
   `check_permission` to the MCP tools list in Local Tools.
-- [ ] T015 Final gate: `pytest && ruff check src tests && mypy src` all green; record final test count and
+- [X] T015 Final gate: `pytest && ruff check src tests && mypy src` all green; record final test count and
   status in this tasks file's notes.
 
 ---
@@ -138,3 +138,13 @@ recognizes; without a token it exits 2 and posts nothing.
 - The comment workflow grants no authority — authorization is recomputed in `ci.py` from the trusted base,
   so anyone can trigger a rerun but nobody can self-approve by commenting (constitution I/V, D2).
 - Out of scope this phase: full GitHub App (webhooks/Checks API) and GitLab.
+
+### Final status (all phases complete)
+
+- **All 15 tasks complete** (T001–T015). 224 tests pass (was 200; +24 across approvals/ci/cli/mcp);
+  ruff + mypy strict clean.
+- **US1** `/specguard approve` comment command, **US2** `specguard approve <pr>` CLI, **US3** MCP
+  `check_permission` + would-block redirect — all shipped. `engine.evaluate_pr` /
+  `has_qualified_approval` untouched; the three approval paths agree by construction (FR-005, tested).
+- **Deviation**: the T001 test helpers live in the test modules (`_no_network_approvals` in `test_ci.py`,
+  `comments_transport` in `test_approvals.py`) rather than `conftest.py` — they live where used.

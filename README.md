@@ -221,13 +221,31 @@ pip install "specguard-ci[mcp]"
 { "mcpServers": { "specguard": { "command": "specguard", "args": ["mcp"] } } }
 ```
 
-Agents get three tools: `check_proposed_change` (full verdict for proposed content),
-`get_scope_lock`, and `list_watched_paths`. Drift prevention moves from "blocked PR" to
-"agent self-corrects mid-draft."
+Agents get four tools: `check_proposed_change` (full verdict for proposed content — and, when a
+change would block, a `redirect` naming the approver role and suggesting a separate proposal),
+`get_scope_lock`, `list_watched_paths`, and `check_permission` (may this identity make this class of
+change to this file?). Drift prevention moves from "blocked PR" to "agent self-corrects mid-draft."
 
 > Local results always carry an advisory notice: nothing local enforces. Governance
 > config is read from your committed baseline — editing your own lock locally doesn't
 > change the verdict your PR will actually get.
+
+---
+
+## Approving a scope change
+
+When the gate blocks a scope change, any **one** authorized approval clears it — three equivalent
+paths, all evaluated by the same rule and recorded identically:
+
+| Path | How |
+|---|---|
+| **Native PR review** | An authorized role member clicks **Approve** in the GitHub review UI. |
+| **Comment command** | An authorized member comments `/specguard approve` on the PR (mobile-friendly); the gate re-runs in place. |
+| **CLI** | `specguard approve <pr-number>` from the terminal (needs `GH_TOKEN`/`GITHUB_TOKEN`). |
+
+Authorization always uses the **server-side GitHub login** against `roles.yml` — a comment or CLI call
+from someone outside the authorizing role does **not** clear the block (anyone can *trigger* a re-run;
+only a real role member can *approve*). Merge-time stays the only enforcement layer.
 
 ---
 
