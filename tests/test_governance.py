@@ -9,9 +9,15 @@ Explicit-lock precedence and the parity test live with US3 (T014–T016).
 
 from __future__ import annotations
 
-from tests.conftest import GitRepo
+import json
 
+from tests.conftest import FakeAdapter, GitRepo, make_classification
+
+from specguard.engine import evaluate_pr
+from specguard.gitdiff import diff_from_contents
 from specguard.governance import resolve_lock
+from specguard.localcheck import load_baseline_governance
+from specguard.models import Approval, Config, PRContext, ScopeLock
 
 # A hard-wrapped constitution (mirrors the real one) — the wrapping is deliberate:
 # the parser must re-join continuation lines or it truncates the scope list.
@@ -182,3 +188,96 @@ def test_plain_when_no_framework_and_no_lock(git_repo: GitRepo) -> None:
 
     assert lock is None
     assert source == "plain"
+
+
+# ---------------------------------------------------------------------------
+# User Story 3 — explicit lock & plain mode still win (T014–T016)
+# ---------------------------------------------------------------------------
+
+EXPLICIT_LOCK = {
+    "goal": "A hand-authored goal that overrides the framework",
+    "scope_in": ["explicitly allowed topic"],
+    "scope_out": ["explicitly forbidden topic"],
+}
+
+
+def test_explicit_lock_short_circuits_spec_kit(git_repo: GitRepo) -> None:
+    """FR-002: an explicit lock wins and the framework files are not consulted."""
+    git_repo.write(".specify/memory/constitution.md", CONSTITUTION)
+    git_repo.write(".specguard/lock.json", json.dumps(EXPLICIT_LOCK))
+    base = git_repo.commit_all("spec kit + explicit lock")
+
+    lock, source = resolve_lock(git_repo.root, base, [])
+
+    assert source == "explicit-lock"
+    assert lock is not None
+    assert lock.goal == EXPLICIT_LOCK["goal"]
+    assert lock.scope_out == ["explicitly forbidden topic"]
+    # Nothing derived from the constitution leaked in.
+    assert "web dashboard" not in lock.scope_out
+    assert "Merge-Time Enforcement" not in lock.goal
+
+
+def test_plain_repo_governance_is_unconfigured(git_repo: GitRepo) -> None:
+    """FR-011: the unconfigured signal the SETUP_HINT path keys on is preserved —
+    a plain repo yields lock=None / source='plain' through load_baseline_governance."""
+    git_repo.write("README.md", "hello")
+    base = git_repo.commit_all("plain repo")
+
+    governance = load_baseline_governance(git_repo.root, base, ["README.md"])
+
+    assert governance.lock is None
+    assert governance.source == "plain"
+
+
+def _no_approvals() -> list[Approval]:
+    return []
+
+
+def test_parity_derived_equals_hand_authored_and_ci_equals_local(
+    git_repo: GitRepo,
+) -> None:
+    """SC-002 / analyze F1: a derived lock equals an equivalent hand-authored lock
+    AND the CI route equals the local route — same lock, same verdict."""
+    base = _speckit_repo(git_repo)
+    changed_paths = ["specs/001-auth/spec.md"]
+
+    # CI route: ci.py calls resolve_lock directly.
+    ci_lock, ci_source = resolve_lock(git_repo.root, base, changed_paths)
+    # Local route: cli/mcp go through load_baseline_governance.
+    local = load_baseline_governance(git_repo.root, base, changed_paths)
+
+    assert ci_source == local.source == "spec-kit"
+    assert ci_lock is not None and local.lock is not None
+    # F1 guard: identical base_ref + changed_paths ⇒ identical derived lock.
+    assert ci_lock == local.lock
+
+    # Equivalent hand-authored lock with the same values.
+    hand = ScopeLock(
+        goal=ci_lock.goal,
+        scope_in=list(ci_lock.scope_in),
+        scope_out=list(ci_lock.scope_out),
+    )
+
+    config = Config()
+    pr = PRContext(
+        pr_number=7, base_sha="base", head_sha="head",
+        author_login="dev", is_fork=False, repo="acme/widgets",
+    )
+    changed = diff_from_contents("README.md", "old goal text", "new out-of-scope text")
+    scope_change = make_classification(
+        "SCOPE_CHANGE", 0.93, "HIGH", ["something out of scope"]
+    )
+
+    def verdict_for(lock: ScopeLock):
+        return evaluate_pr(
+            [changed], lock, config, None, pr,
+            FakeAdapter(default=scope_change), _no_approvals,
+        )[0]
+
+    derived_verdict = verdict_for(ci_lock)
+    hand_verdict = verdict_for(hand)
+
+    assert derived_verdict.classification == hand_verdict.classification
+    assert derived_verdict.outcome == hand_verdict.outcome
+    assert derived_verdict.reason == hand_verdict.reason

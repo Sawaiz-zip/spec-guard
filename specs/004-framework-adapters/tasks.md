@@ -92,12 +92,12 @@ byte-identical to today.
 **Independent test**: Adding a `lock.json` to this Spec Kit repo flips the source to `explicit-lock` and
 the constitution is not consulted; a repo with neither framework behaves exactly as before.
 
-- [ ] T014 [P] [US3] Tests in `tests/test_governance.py`: explicit-lock short-circuit (use framework
+- [X] T014 [P] [US3] Tests in `tests/test_governance.py`: explicit-lock short-circuit (use framework
   fixtures that, if read, would yield a different scope; assert the explicit lock's scope is used and
   source is `explicit-lock`); precedence explicit > spec-kit.
-- [ ] T015 [P] [US3] Tests in `tests/test_governance.py`: plain-mode unchanged when no framework present
+- [X] T015 [P] [US3] Tests in `tests/test_governance.py`: plain-mode unchanged when no framework present
   (`(None, "plain")`), and the SETUP_HINT/unconfigured path is preserved (FR-011).
-- [ ] T016 [US3] Parity test in `tests/test_governance.py`: a derived Spec Kit lock and an equivalent
+- [X] T016 [US3] Parity test in `tests/test_governance.py`: a derived Spec Kit lock and an equivalent
   hand-authored `ScopeLock` produce an identical verdict through `engine.evaluate_pr` with a `FakeAdapter`
   (constitution III, SC-002). Cover **both** code paths: the CI route (`ci.py` → `resolve_lock` with the
   PR's changed paths) AND the local route (`load_baseline_governance` with the same changed paths), asserting
