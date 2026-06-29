@@ -17,10 +17,8 @@ from typing import Literal
 
 from specguard.config import (
     CONFIG_PATH,
-    LOCK_PATH,
     ROLES_PATH,
     parse_config,
-    parse_lock,
     parse_roles,
 )
 from specguard.gitdiff import (
@@ -31,6 +29,7 @@ from specguard.gitdiff import (
     watched_changes,
     worktree_changes,
 )
+from specguard.governance import GovernanceSource, resolve_lock
 from specguard.models import Config, RolesConfig, ScopeLock
 
 SnapshotMode = Literal["worktree", "staged", "range"]
@@ -52,6 +51,7 @@ class BaselineGovernance:
     lock: ScopeLock | None
     config: Config
     roles: RolesConfig | None
+    source: GovernanceSource = "plain"
 
 
 def require_repo_with_head(repo_root: Path) -> str:
@@ -121,19 +121,21 @@ def resolve_snapshot(
     )
 
 
-def load_baseline_governance(repo_root: Path, base_ref: str) -> BaselineGovernance:
-    """Lock/config/roles parsed from the baseline commit (FR-010)."""
-    source = f"{base_ref}:{{path}}"
-    lock_text = show_file(repo_root, base_ref, LOCK_PATH)
-    lock = (
-        parse_lock(lock_text, source.format(path=LOCK_PATH))
-        if lock_text is not None
-        else None
-    )
+def load_baseline_governance(
+    repo_root: Path, base_ref: str, changed_paths: list[str] | None = None
+) -> BaselineGovernance:
+    """Lock/config/roles parsed from the baseline commit (FR-010).
+
+    The lock is resolved via the governance overlay (explicit lock > Spec Kit >
+    OpenSpec > plain). `changed_paths` is forwarded so framework derivation sees the
+    same files CI does — pass them once the snapshot is known (constitution III).
+    """
+    origin = f"{base_ref}:{{path}}"
+    lock, src = resolve_lock(repo_root, base_ref, changed_paths)
     config = parse_config(
-        show_file(repo_root, base_ref, CONFIG_PATH), source.format(path=CONFIG_PATH)
+        show_file(repo_root, base_ref, CONFIG_PATH), origin.format(path=CONFIG_PATH)
     )
     roles = parse_roles(
-        show_file(repo_root, base_ref, ROLES_PATH), source.format(path=ROLES_PATH)
+        show_file(repo_root, base_ref, ROLES_PATH), origin.format(path=ROLES_PATH)
     )
-    return BaselineGovernance(lock=lock, config=config, roles=roles)
+    return BaselineGovernance(lock=lock, config=config, roles=roles, source=src)

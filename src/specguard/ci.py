@@ -18,16 +18,14 @@ from specguard.approvals import fetch_approvals
 from specguard.classifier import AnthropicAdapter
 from specguard.config import (
     CONFIG_PATH,
-    LOCK_PATH,
     ROLES_PATH,
     ConfigError,
-    detect_framework,
     parse_config,
-    parse_lock,
     parse_roles,
 )
 from specguard.engine import evaluate_pr
 from specguard.gitdiff import GitError, show_file, watched_changes
+from specguard.governance import resolve_lock
 from specguard.models import Approval, PRContext
 from specguard.providers import make_adapter
 
@@ -91,12 +89,6 @@ def _run(client: Any | None, repo_root: Path) -> int:
     # Governance config is read at the PR BASE, never from the checkout: the
     # checkout is the PR's own merge result, so trusting it would let any PR
     # rewrite the rules it is judged by (verified live in sandbox E2E).
-    lock_text = show_file(repo_root, pr.base_sha, LOCK_PATH)
-    if lock_text is None:
-        report.notice(SETUP_HINT)
-        return 0
-
-    lock = parse_lock(lock_text, f"{pr.base_sha[:7]}:{LOCK_PATH}")
     config = parse_config(
         show_file(repo_root, pr.base_sha, CONFIG_PATH), f"{pr.base_sha[:7]}:{CONFIG_PATH}"
     )
@@ -104,16 +96,21 @@ def _run(client: Any | None, repo_root: Path) -> int:
         show_file(repo_root, pr.base_sha, ROLES_PATH), f"{pr.base_sha[:7]}:{ROLES_PATH}"
     )
 
-    framework = detect_framework(repo_root)
-    if framework:
-        report.notice(
-            f"SpecGuard: {framework} detected — adapter coming; using plain mode"
-        )
-
     changed = watched_changes(repo_root, pr.base_sha, pr.head_sha, config.watch)
     if not changed:
         report.notice("SpecGuard: no watched spec files changed in this PR")
         return 0
+
+    # The lock comes from the governance overlay (explicit lock > Spec Kit >
+    # OpenSpec > plain), derived from the same base ref and changed paths so the
+    # verdict matches what the local tools produce (constitution III, FR-005).
+    lock, source = resolve_lock(
+        repo_root, pr.base_sha, [c.path for c in changed]
+    )
+    if lock is None:
+        report.notice(SETUP_HINT)
+        return 0
+    report.notice(f"SpecGuard: governance source — {source}")
 
     # Test injection keeps the Anthropic SDK seam; real runs pick the backend
     # declared by config.provider (anthropic/openai/gemini/openrouter).

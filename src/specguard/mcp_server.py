@@ -28,9 +28,11 @@ SETUP_HINT = (
 INSTALL_HINT = 'the MCP server needs the optional extra — pip install "specguard-ci[mcp]"'
 
 
-def _base(repo_root: Path) -> tuple[str, Any]:
+def _base(
+    repo_root: Path, changed_paths: list[str] | None = None
+) -> tuple[str, Any]:
     short_sha = require_repo_with_head(repo_root)
-    governance = load_baseline_governance(repo_root, "HEAD")
+    governance = load_baseline_governance(repo_root, "HEAD", changed_paths)
     return f"HEAD ({short_sha})", governance
 
 
@@ -48,7 +50,7 @@ def check_proposed_change(
 ) -> dict[str, Any]:
     """Classify a change the agent is ABOUT to write — before any commit exists."""
     root = repo_root or Path.cwd()
-    baseline, governance = _base(root)
+    baseline, governance = _base(root, [path])
 
     if governance.lock is None:
         return _advisory({"configured": False, "hint": SETUP_HINT})
@@ -116,6 +118,7 @@ def check_proposed_change(
             "watched": True,
             "classified": True,
             "baseline": baseline,
+            "governance_source": governance.source,
             "verdict": _verdict_payload(verdict),
         }
     )
@@ -143,6 +146,7 @@ def get_scope_lock(repo_root: Path | None = None) -> dict[str, Any]:
         {
             "configured": True,
             "baseline": baseline,
+            "governance_source": governance.source,
             "scope_lock": governance.lock.model_dump(),
         }
     )
