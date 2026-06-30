@@ -20,7 +20,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
-        run: pip install -e ".[dev]"
+        # mcp + app extras so the local-tools and GitHub App surfaces are tested
+        # too; provider SDKs (openai/gemini) stay out — their adapters are tested
+        # via the missing-SDK path.
+        run: pip install -e ".[dev,mcp,app]"
       - name: Lint
         run: ruff check .
       - name: Type-check
