@@ -21,16 +21,18 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from specguard.models import Config, RolesConfig, ScopeLock
+from specguard.models import Config, RegionsConfig, RolesConfig, ScopeLock
 
 SPECGUARD_DIR = ".specguard"
 LOCK_FILE = "lock.json"
 CONFIG_FILE = "config.yml"
 ROLES_FILE = "roles.yml"
+REGIONS_FILE = "regions.yml"
 
 LOCK_PATH = f"{SPECGUARD_DIR}/{LOCK_FILE}"
 CONFIG_PATH = f"{SPECGUARD_DIR}/{CONFIG_FILE}"
 ROLES_PATH = f"{SPECGUARD_DIR}/{ROLES_FILE}"
+REGIONS_PATH = f"{SPECGUARD_DIR}/{REGIONS_FILE}"
 
 MODEL_ENV_VAR = "SPECGUARD_MODEL"
 
@@ -114,6 +116,20 @@ def parse_roles(text: str | None, source: str = ROLES_PATH) -> RolesConfig | Non
                     f"{source}: rule '{pattern}' references unknown role '{role}'"
                 )
     return roles_config
+
+
+def parse_regions(text: str | None, source: str = REGIONS_PATH) -> RegionsConfig | None:
+    """None when regions.yml is absent — that absence is whole-file governance (007 US1)."""
+    if text is None:
+        return None
+    try:
+        raw = yaml.safe_load(text) or {}
+    except yaml.YAMLError as exc:
+        raise ConfigError(f"{source}: invalid YAML — {exc}") from exc
+    try:
+        return RegionsConfig.model_validate(raw)
+    except ValidationError as exc:
+        raise ConfigError(f"{source}: {_first_error(exc)}") from exc
 
 
 # ---------------------------------------------------------------------------

@@ -19,19 +19,14 @@ from specguard.approvals import (
     fetch_comment_approvals,
     fetch_commit_time,
 )
+from specguard.audit import build_audit_entries, export_audit_json
 from specguard.classifier import AnthropicAdapter
-from specguard.config import (
-    CONFIG_PATH,
-    ROLES_PATH,
-    ConfigError,
-    parse_config,
-    parse_roles,
-)
+from specguard.config import CONFIG_PATH, ConfigError, parse_config
 from specguard.engine import evaluate_pr
 from specguard.gitdiff import GitError, show_file, watched_changes
-from specguard.governance import resolve_lock
-from specguard.models import Approval, PRContext
+from specguard.models import Approval, PRContext, RolesConfig, Verdict
 from specguard.providers import make_adapter
+from specguard.scopes import rescope_changed_file, resolve_scopes
 
 SETUP_HINT = (
     "SpecGuard is installed but this repository has no .specguard/lock.json — "
@@ -92,12 +87,12 @@ def _run(client: Any | None, repo_root: Path) -> int:
 
     # Governance config is read at the PR BASE, never from the checkout: the
     # checkout is the PR's own merge result, so trusting it would let any PR
-    # rewrite the rules it is judged by (verified live in sandbox E2E).
+    # rewrite the rules it is judged by (verified live in sandbox E2E). Only
+    # `watch` is resolved from the repo-root config — a deliberate phase-1
+    # simplification for multi-scope repos (007 research.md R4 family);
+    # everything else (lock, threshold, roles, regions) is per-scope below.
     config = parse_config(
         show_file(repo_root, pr.base_sha, CONFIG_PATH), f"{pr.base_sha[:7]}:{CONFIG_PATH}"
-    )
-    roles_config = parse_roles(
-        show_file(repo_root, pr.base_sha, ROLES_PATH), f"{pr.base_sha[:7]}:{ROLES_PATH}"
     )
 
     changed = watched_changes(repo_root, pr.base_sha, pr.head_sha, config.watch)
@@ -105,40 +100,70 @@ def _run(client: Any | None, repo_root: Path) -> int:
         report.notice("SpecGuard: no watched spec files changed in this PR")
         return 0
 
-    # The lock comes from the governance overlay (explicit lock > Spec Kit >
-    # OpenSpec > plain), derived from the same base ref and changed paths so the
-    # verdict matches what the local tools produce (constitution III, FR-005).
-    lock, source = resolve_lock(
-        repo_root, pr.base_sha, [c.path for c in changed]
-    )
-    if lock is None:
+    # Group changed files by nearest-ancestor explicit-lock scope (007 US2);
+    # a repo with no subdirectory scopes yields exactly one repo-root scope
+    # using the existing governance overlay (explicit lock > Spec Kit >
+    # OpenSpec > plain) — fully backward compatible (FR-003).
+    scopes = resolve_scopes(repo_root, pr.base_sha, changed)
+    if not scopes:
         report.notice(SETUP_HINT)
         return 0
-    report.notice(f"SpecGuard: governance source — {source}")
-
-    # Test injection keeps the Anthropic SDK seam; real runs pick the backend
-    # declared by config.provider (anthropic/openai/gemini/openrouter).
-    adapter = AnthropicAdapter(client=client) if client is not None else make_adapter(config)
 
     token = os.environ.get("GITHUB_TOKEN", "")
+    approvals_cache: list[Approval] | None = None
 
     def get_approvals() -> list[Approval]:
         # Approvals come from two platform-native sources, evaluated identically
         # by the engine: native reviews AND `/specguard approve` comments posted
         # at/after the head commit (FR-005, FR-010). A failure in either read
         # raises ApprovalsError, which the engine treats as "no approvals" so a
-        # blocked verdict stays blocked (fail-closed).
-        reviews = fetch_approvals(pr.repo, pr.pr_number, token)
-        since = fetch_commit_time(pr.repo, pr.head_sha, token)
-        comments = fetch_comment_approvals(pr.repo, pr.pr_number, token, since)
-        return reviews + comments
+        # blocked verdict stays blocked (fail-closed). Memoized: one PR has one
+        # set of reviews/comments shared across every scope.
+        nonlocal approvals_cache
+        if approvals_cache is None:
+            reviews = fetch_approvals(pr.repo, pr.pr_number, token)
+            since = fetch_commit_time(pr.repo, pr.head_sha, token)
+            comments = fetch_comment_approvals(pr.repo, pr.pr_number, token, since)
+            approvals_cache = reviews + comments
+        return approvals_cache
 
-    verdicts = evaluate_pr(changed, lock, config, roles_config, pr, adapter, get_approvals)
+    all_verdicts: list[Verdict] = []
+    scope_roles: dict[str, RolesConfig | None] = {}
+    for scope in scopes:
+        report.notice(
+            f"SpecGuard: governance source for "
+            f"{scope.scope_dir or '(repo root)'} — {scope.source}"
+        )
+        scope_roles[scope.scope_dir] = scope.roles
+        rescoped = [rescope_changed_file(c, scope.scope_dir) for c in scope.changed]
+        # Test injection keeps the Anthropic SDK seam; real runs pick the
+        # backend declared by config.provider (anthropic/openai/gemini/openrouter).
+        scope_adapter = (
+            AnthropicAdapter(client=client) if client is not None else make_adapter(scope.config)
+        )
+        verdicts = evaluate_pr(
+            rescoped,
+            scope.lock,
+            scope.config,
+            scope.roles,
+            pr,
+            scope_adapter,
+            get_approvals,
+            regions_config=scope.regions,
+            scope=scope.scope_dir,
+        )
+        all_verdicts.extend(verdicts)
 
-    report.emit_annotations(verdicts, pr, roles_config)
-    report.write_summary(verdicts, pr, roles_config)
+    report.emit_annotations(all_verdicts, pr, roles_config=None, scope_roles=scope_roles)
+    report.write_summary(all_verdicts, pr, roles_config=None, scope_roles=scope_roles)
 
-    return 1 if any(v.outcome == "BLOCK" for v in verdicts) else 0
+    audit_path = os.environ.get("SPECGUARD_AUDIT_PATH")
+    if audit_path:
+        as_of = fetch_commit_time(pr.repo, pr.head_sha, token)
+        entries = build_audit_entries(all_verdicts, get_approvals(), pr, as_of=as_of)
+        Path(audit_path).write_text(export_audit_json(entries))
+
+    return 1 if any(v.outcome == "BLOCK" for v in all_verdicts) else 0
 
 
 if __name__ == "__main__":

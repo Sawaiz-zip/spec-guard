@@ -188,3 +188,45 @@ class TestParsePrWebhook:
         """SC-003: the App derives the same PR coordinates ci.py does."""
         pr = parse_pr_webhook("pull_request", self._pr_payload())
         assert (pr.repo, pr.base_sha, pr.head_sha) == ("acme/widgets", "base", "head")
+
+
+class TestMultiScope:
+    """007 US2: the App's evaluate() supports per-package scopes too."""
+
+    def test_independent_verdicts_per_scope(self, git_repo):
+        repo = git_repo
+        repo.write(
+            ".specguard/config.yml",
+            'watch: ["**/README.md", ".specguard/**", "**/.specguard/**"]\n',
+        )
+        repo.write(
+            "packages/api/.specguard/lock.json",
+            json.dumps({"goal": "API", "scope_in": [], "scope_out": ["billing"]}),
+        )
+        repo.write(
+            "packages/web/.specguard/lock.json",
+            json.dumps({"goal": "Web", "scope_in": [], "scope_out": ["payments"]}),
+        )
+        repo.write("packages/api/README.md", "API\n")
+        repo.write("packages/web/README.md", "Web\n")
+        base = repo.commit_all("base")
+        repo.write("packages/api/README.md", "API\nBilling soon.\n")
+        repo.write("packages/web/README.md", "Web\nTypo fix.\n")
+        head = repo.commit_all("two-package change")
+
+        adapter = FakeAdapter(
+            responses={
+                "README.md": make_classification(
+                    "SCOPE_CHANGE", 0.95, "HIGH", ["billing"], "billing mention"
+                )
+            },
+            default=make_classification("ADDITIVE", 0.95),
+        )
+        result = evaluate(
+            webhook(repo.root, base, head), "tok",
+            checkout=fake_checkout_for(repo.root), adapter=adapter, attribute=human,
+        )
+        assert result.conclusion == "success"  # solo mode: scope-change warns, never blocks
+        assert "packages/api/README.md" in result.summary
+        assert "packages/web/README.md" in result.summary
+        assert "billing" in result.summary.lower() or "billing mention" in result.summary

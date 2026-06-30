@@ -119,3 +119,16 @@ file → full verdict with `advisory: true` before anything is committed.
 Locally edit `.specguard/lock.json` to allow a currently out-of-scope topic,
 add that topic to README, run `specguard check` → still SCOPE CHANGE: config
 is read at the committed baseline, which the output names.
+
+---
+
+# Advanced Governance (Phase 3)
+
+Full scenarios: `specs/007-advanced/quickstart.md`. Summary:
+
+- **Section locking**: `.specguard/regions.yml` restricts governance on a file to named
+  heading regions; edits outside them pass without a classifier call.
+- **Monorepo**: a `.specguard/` in any subdirectory governs that subtree independently;
+  a PR touching N packages gets N independent verdicts in one run.
+- **Audit export**: `SPECGUARD_AUDIT_PATH=audit.json python -m specguard.ci` writes one
+  JSON record per verdict — no secrets, no new datastore.

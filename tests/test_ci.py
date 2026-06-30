@@ -258,3 +258,104 @@ class TestUnconfiguredAndErrors:
         assert exit_code == 0
         assert client.call_count == 0
         assert "no watched spec files" in captured.out
+
+
+class TestMultiScope:
+    """007 US2: end-to-end through ci.py with two package scopes."""
+
+    def setup_monorepo(self, repo):
+        repo.write(
+            ".specguard/config.yml",
+            'watch: ["**/README.md", ".specguard/**", "**/.specguard/**"]\n',
+        )
+        repo.write(
+            "packages/api/.specguard/lock.json",
+            json.dumps({"goal": "API service", "scope_in": [], "scope_out": ["billing"]}),
+        )
+        repo.write(
+            "packages/web/.specguard/lock.json",
+            json.dumps({"goal": "Web app", "scope_in": [], "scope_out": ["payments"]}),
+        )
+        repo.write("packages/api/README.md", "# API\n")
+        repo.write("packages/web/README.md", "# Web\n")
+        base = repo.commit_all("base")
+        repo.write("packages/api/README.md", "# API\nBilling integration coming.\n")
+        repo.write("packages/web/README.md", "# Web\nJust a typo fxi.\n")
+        head = repo.commit_all("two-package change")
+        return base, head
+
+    def test_independent_verdicts_per_scope(self, ci_env, capsys):
+        base, head = self.setup_monorepo(ci_env.repo)
+        ci_env.write_event(load_event("pr_typo_fix.json", base, head))
+        client = FakeAnthropicClient(
+            responses={
+                "README.md": make_classification(
+                    "SCOPE_CHANGE", 0.95, "HIGH", ["billing"], "billing mention"
+                ),
+            },
+            default=make_classification("ADDITIVE", 0.95),
+        )
+        exit_code = ci.main(client=client)
+        captured = capsys.readouterr()
+        # Solo mode (no roles.yml in either scope) -> the api scope-change warns,
+        # never blocks; the web typo fix passes quietly. Exit 0 either way.
+        assert exit_code == 0
+        assert "::warning file=packages/api/README.md::" in captured.out
+        assert "billing" in captured.out
+        summary = ci_env.summary_path.read_text()
+        assert "packages/api/README.md" in summary
+        assert "packages/web/README.md" in summary
+
+    def test_scope_protected_path_uses_that_scopes_own_roles(self, ci_env, capsys):
+        repo = ci_env.repo
+        repo.write(
+            ".specguard/config.yml",
+            'watch: ["**/README.md", ".specguard/**", "**/.specguard/**"]\n',
+        )
+        repo.write(
+            "packages/api/.specguard/lock.json",
+            json.dumps({"goal": "API", "scope_in": [], "scope_out": []}),
+        )
+        repo.write(
+            "packages/api/.specguard/roles.yml",
+            "roles:\n  api-team: [alice]\nrules:\n  .specguard/**:\n    edit: api-team\n",
+        )
+        repo.write("packages/api/README.md", "v1\n")
+        base = repo.commit_all("base")
+        # "dev" (not api-team) edits the scope's OWN protected roles.yml.
+        repo.write(
+            "packages/api/.specguard/roles.yml",
+            "roles:\n  api-team: [alice, dev]\nrules:\n  .specguard/**:\n    edit: api-team\n",
+        )
+        head = repo.commit_all("self-promotion")
+        ci_env.write_event(load_event("pr_typo_fix.json", base, head))
+        exit_code = ci.main(client=FakeAnthropicClient())
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "::error file=packages/api/.specguard/roles.yml::" in captured.out
+
+
+class TestAuditExport:
+    def test_writes_one_entry_per_verdict(self, ci_env, capsys, tmp_path, monkeypatch):
+        base, head = setup_configured_repo(ci_env)
+        ci_env.write_event(load_event("pr_typo_fix.json", base, head))
+        audit_path = tmp_path / "audit.json"
+        monkeypatch.setenv("SPECGUARD_AUDIT_PATH", str(audit_path))
+        _no_network_approvals(monkeypatch)
+        client = FakeAnthropicClient(
+            responses={"README.md": make_classification("ADDITIVE", 0.97)}
+        )
+        exit_code = ci.main(client=client)
+        assert exit_code == 0
+        entries = json.loads(audit_path.read_text())
+        assert len(entries) == 1
+        assert entries[0]["file"] == "README.md"
+        assert entries[0]["outcome"] == "PASS"
+        assert entries[0]["repo"] == "acme/widgets"
+
+    def test_no_env_var_means_no_file_written(self, ci_env, capsys, tmp_path, monkeypatch):
+        monkeypatch.delenv("SPECGUARD_AUDIT_PATH", raising=False)
+        base, head = setup_configured_repo(ci_env)
+        ci_env.write_event(load_event("pr_typo_fix.json", base, head))
+        ci.main(client=FakeAnthropicClient())
+        assert not (tmp_path / "audit.json").exists()
