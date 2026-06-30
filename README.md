@@ -276,7 +276,7 @@ only a real role member can *approve*). Merge-time stays the only enforcement la
 | **1.5 — Provider-Agnostic** | 🟢 Shipped | Anthropic · OpenAI · Gemini · OpenRouter behind one engine · Python 3.10+ |
 | **2 — Framework Adapters** | 🟢 Shipped | Spec Kit + OpenSpec governance overlay — auto-derive the lock from existing specs · explicit-lock override · source reporting |
 | **2 — Approval Commands** | 🟢 Shipped | `/specguard approve` PR comment · `specguard approve` CLI · MCP `check_permission` + write-time redirect |
-| **2 — GitHub App** | ⚪ Planned | Native Checks API · fork PR support · bot vs human identity · GitLab equivalent |
+| **2 — GitHub App** | 🟡 Core built | Native Checks API · fork PR support · bot vs human identity (self-hostable; deploy + GitLab pending) |
 | **3 — Advanced** | ⚪ Planned | Section-level locking · monorepo support · audit export |
 
 ---

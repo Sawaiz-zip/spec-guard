@@ -37,9 +37,15 @@ openai = [
 gemini = [
     "google-genai>=0.3",
 ]
+# The GitHub App surface (006): a self-hostable webhook receiver. Only the
+# RS256 JWT signing needs a dependency; the HTTP receiver is stdlib.
+app = [
+    "pyjwt[crypto]>=2.8",
+]
 
 [project.scripts]
 specguard = "specguard.cli:main"
+specguard-app = "specguard.app.server:main"
 
 [project.urls]
 Repository = "https://github.com/Sawaiz-zip/spec-guard"
@@ -70,8 +76,9 @@ strict = true
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-# Provider SDKs are optional extras; CI type-checks without them installed.
-module = ["openai.*", "google.genai.*", "google.*"]
+# Provider SDKs and the App's JWT lib are optional extras; CI type-checks
+# without them installed.
+module = ["openai.*", "google.genai.*", "google.*", "jwt.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
