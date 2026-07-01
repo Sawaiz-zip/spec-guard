@@ -48,20 +48,37 @@ def _role_with_members(role: str, roles_config: RolesConfig | None) -> str:
     return f"{members} ({role})" if members else role
 
 
+def _roles_for(
+    verdict: Verdict,
+    roles_config: RolesConfig | None,
+    scope_roles: dict[str, RolesConfig | None] | None,
+) -> RolesConfig | None:
+    """Per-verdict roles lookup for multi-scope reports (007 US2); falls back
+    to the single `roles_config` when `scope_roles` is not provided, so every
+    existing single-scope call site is unaffected."""
+    if scope_roles is not None:
+        return scope_roles.get(verdict.scope)
+    return roles_config
+
+
 def emit_annotations(
-    verdicts: list[Verdict], pr: PRContext, roles_config: RolesConfig | None
+    verdicts: list[Verdict],
+    pr: PRContext,
+    roles_config: RolesConfig | None,
+    scope_roles: dict[str, RolesConfig | None] | None = None,
 ) -> None:
     """Print ::error/::warning workflow commands. PASS verdicts are silent,
     except classifier_error under on_error=warn which must warn loudly (R4)."""
     for verdict in verdicts:
         text = None
         level = None
+        effective_roles = _roles_for(verdict, roles_config, scope_roles)
         if verdict.outcome == "BLOCK":
             level = "error"
-            text = _annotation_text(verdict, pr, roles_config)
+            text = _annotation_text(verdict, pr, effective_roles)
         elif verdict.outcome == "WARN" or verdict.reason == "classifier_error":
             level = "warning"
-            text = _annotation_text(verdict, pr, roles_config)
+            text = _annotation_text(verdict, pr, effective_roles)
         if level and text:
             print(f"::{level} file={verdict.file}::{_escape(text)}")
 
@@ -80,7 +97,10 @@ def _escape(text: str) -> str:
 
 
 def write_summary(
-    verdicts: list[Verdict], pr: PRContext, roles_config: RolesConfig | None
+    verdicts: list[Verdict],
+    pr: PRContext,
+    roles_config: RolesConfig | None,
+    scope_roles: dict[str, RolesConfig | None] | None = None,
 ) -> None:
     """Markdown verdict table to $GITHUB_STEP_SUMMARY (§F4 block format)."""
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
@@ -88,7 +108,8 @@ def write_summary(
         return
     lines: list[str] = [_headline(verdicts), ""]
     for verdict in verdicts:
-        lines.extend(_summary_block(verdict, pr, roles_config))
+        effective_roles = _roles_for(verdict, roles_config, scope_roles)
+        lines.extend(_summary_block(verdict, pr, effective_roles))
     Path(summary_path).open("a").write("\n".join(lines) + "\n")
 
 
@@ -104,6 +125,11 @@ def _summary_block(
     verdict: Verdict, pr: PRContext, roles_config: RolesConfig | None
 ) -> list[str]:
     c = verdict.classification
+    if verdict.reason == "region_ungoverned":
+        return [
+            f"✅ `{verdict.file}` — outside the locked region(s); not classified",
+            "",
+        ]
     if verdict.reason == "additive":
         assert c is not None
         line = f"✅ `{verdict.file}` — ADDITIVE ({c.confidence:.0%}): {c.summary}"

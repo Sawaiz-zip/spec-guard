@@ -19,12 +19,12 @@ from specguard.app.checks import CheckRunResult
 from specguard.app.commits import CommitAuthor, attribute_author
 from specguard.app.repo import checkout as real_checkout
 from specguard.classifier import ClassifierAdapter
-from specguard.config import CONFIG_PATH, ROLES_PATH, parse_config, parse_roles
+from specguard.config import CONFIG_PATH, parse_config
 from specguard.engine import evaluate_pr
 from specguard.gitdiff import show_file, watched_changes
-from specguard.governance import resolve_lock
 from specguard.models import Approval, PRContext, Verdict
 from specguard.providers import make_adapter
+from specguard.scopes import rescope_changed_file, resolve_scopes
 
 # Webhook event names we act on; everything else is ignored (204).
 HANDLED_EVENTS = {"pull_request", "pull_request_review", "check_run"}
@@ -82,8 +82,12 @@ def _neutral(title: str, summary: str) -> CheckRunResult:
     return CheckRunResult(conclusion="neutral", title=title, summary=summary)
 
 
-def _summary(verdicts: list[Verdict], source: str) -> str:
-    lines = [f"Governance source: `{source}`.", ""]
+def _summary(verdicts: list[Verdict], sources: dict[str, str]) -> str:
+    lines = [
+        f"Governance source for {scope_dir or '(repo root)'}: `{source}`."
+        for scope_dir, source in sources.items()
+    ]
+    lines.append("")
     for v in verdicts:
         icon = {"BLOCK": "❌", "WARN": "⚠️", "PASS": "✅"}.get(v.outcome, "•")
         detail = v.classification.summary if v.classification else v.reason
@@ -111,13 +115,11 @@ def evaluate(
     to the webhook handler (FR-010).
     """
     with checkout(pr.repo, pr.base_sha, pr.head_sha, token) as repo_root:
+        # Only `watch` is resolved from the repo-root config — everything else
+        # (lock, threshold, roles, regions) is per-scope below (007 US2).
         config = parse_config(
             show_file(repo_root, pr.base_sha, CONFIG_PATH),
             f"{pr.base_sha[:7]}:{CONFIG_PATH}",
-        )
-        roles_config = parse_roles(
-            show_file(repo_root, pr.base_sha, ROLES_PATH),
-            f"{pr.base_sha[:7]}:{ROLES_PATH}",
         )
         changed = watched_changes(repo_root, pr.base_sha, pr.head_sha, config.watch)
         if not changed:
@@ -127,8 +129,8 @@ def evaluate(
                 summary="Nothing to govern in this pull request.",
             )
 
-        lock, source = resolve_lock(repo_root, pr.base_sha, [c.path for c in changed])
-        if lock is None:
+        scopes = resolve_scopes(repo_root, pr.base_sha, changed)
+        if not scopes:
             return _neutral("SpecGuard not configured", SETUP_HINT)
 
         # Attribute to the head-commit author so the propose-only agents rule
@@ -143,16 +145,30 @@ def evaluate(
             repo=pr.repo,
         )
 
-        run_adapter = adapter if adapter is not None else make_adapter(config)
-
         def get_approvals() -> list[Approval]:
             if approvals_provider is None:
                 return []
             return approvals_provider(pr_context, token)
 
-        verdicts = evaluate_pr(
-            changed, lock, config, roles_config, pr_context, run_adapter, get_approvals
-        )
+        verdicts: list[Verdict] = []
+        sources: dict[str, str] = {}
+        for scope in scopes:
+            sources[scope.scope_dir] = scope.source
+            rescoped = [rescope_changed_file(c, scope.scope_dir) for c in scope.changed]
+            scope_adapter = adapter if adapter is not None else make_adapter(scope.config)
+            verdicts.extend(
+                evaluate_pr(
+                    rescoped,
+                    scope.lock,
+                    scope.config,
+                    scope.roles,
+                    pr_context,
+                    scope_adapter,
+                    get_approvals,
+                    regions_config=scope.regions,
+                    scope=scope.scope_dir,
+                )
+            )
 
     if any(v.outcome == "BLOCK" for v in verdicts):
         conclusion: Any = "failure"
@@ -163,4 +179,6 @@ def evaluate(
     else:
         conclusion = "success"
         title = "All changes within locked scope"
-    return CheckRunResult(conclusion=conclusion, title=title, summary=_summary(verdicts, source))
+    return CheckRunResult(
+        conclusion=conclusion, title=title, summary=_summary(verdicts, sources)
+    )

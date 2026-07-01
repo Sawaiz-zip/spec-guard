@@ -267,6 +267,50 @@ only a real role member can *approve*). Merge-time stays the only enforcement la
 
 ---
 
+## Advanced Governance
+
+### Lock a section, let the rest float
+
+Govern just a heading region of a file — a goal paragraph or an out-of-scope list — while
+the FAQ or examples around it stay free to edit:
+
+```yaml
+# .specguard/regions.yml (optional)
+files:
+  "ARCHITECTURE.md": ["Goal", "Out of Scope"]
+```
+
+Edits outside every declared region pass quietly without ever reaching the classifier — strictly
+*less* friction, never more. If a declared heading is renamed or removed, the check fails loudly
+(never silently un-governed) — rename it back, or update `regions.yml` deliberately.
+
+### Monorepo: one scope per package
+
+Drop a `.specguard/` into any subdirectory and it governs that subtree independently — its own
+goal, scope, roles, and regions:
+
+```text
+packages/api/.specguard/lock.json   # "API service", scope_out: [billing]
+packages/web/.specguard/lock.json   # "Web app", scope_out: [payments]
+```
+
+A PR touching both packages gets two independent verdicts in one run. Each package's
+`roles.yml`/`config.yml` is written as if its `.specguard/` were the repo root — copy the whole
+directory between packages and it just works. Files outside any package scope fall back to the
+repo-root lock (or Spec Kit/OpenSpec derivation), unchanged from single-scope repos.
+
+### Audit export
+
+```bash
+SPECGUARD_AUDIT_PATH=audit.json python -m specguard.ci
+```
+
+Writes one JSON record per verdict — file, scope, classification, confidence, required approver
+roles, and every approval seen on the PR — for upload as a workflow artifact. No secrets, no new
+datastore; it's a formatting pass over data the gate already computed.
+
+---
+
 ## Roadmap
 
 | Phase | Status | What ships |
@@ -277,7 +321,7 @@ only a real role member can *approve*). Merge-time stays the only enforcement la
 | **2 — Framework Adapters** | 🟢 Shipped | Spec Kit + OpenSpec governance overlay — auto-derive the lock from existing specs · explicit-lock override · source reporting |
 | **2 — Approval Commands** | 🟢 Shipped | `/specguard approve` PR comment · `specguard approve` CLI · MCP `check_permission` + write-time redirect |
 | **2 — GitHub App** | 🟡 Core built | Native Checks API · fork PR support · bot vs human identity (self-hostable; deploy + GitLab pending) |
-| **3 — Advanced** | ⚪ Planned | Section-level locking · monorepo support · audit export |
+| **3 — Advanced** | 🟢 Shipped | Section-level locking · monorepo multi-scope · audit export |
 
 ---
 

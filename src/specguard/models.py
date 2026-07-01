@@ -102,6 +102,14 @@ class RolesConfig(BaseModel):
     rules: dict[str, Rule] = Field(default_factory=dict)
 
 
+class RegionsConfig(BaseModel):
+    """`.specguard/regions.yml` (optional) — restricts governance on listed files to
+    named heading regions; content outside every declared region is ungoverned
+    (007 US1). Paths and anchors are scope-relative."""
+
+    files: dict[str, list[str]] = Field(default_factory=dict)
+
+
 class Classification(BaseModel):
     """The LLM output contract — see contracts/classifier.md."""
 
@@ -121,6 +129,7 @@ VerdictReason = Literal[
     "protected_violation",
     "classifier_error",
     "not_configured",
+    "region_ungoverned",
 ]
 
 
@@ -132,6 +141,7 @@ class Verdict(BaseModel):
     reason: VerdictReason
     classification: Classification | None = None
     required_approver_roles: list[str] = Field(default_factory=list)
+    scope: str = ""  # "" = repo root; the multi-scope dir this verdict belongs to (007 US2)
 
 
 class PRContext(BaseModel):
