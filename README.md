@@ -110,7 +110,93 @@ Set `ANTHROPIC_API_KEY` as a repository secret, then require the **`specguard`**
 That's it for solo use — scope changes now warn on every PR. To make them **block** until an authorized teammate approves, add a [`roles.yml`](#3-rolesyml--who-may-approve-optional).
 
 > [!TIP]
-> `specguard init` scaffolds all of this for you — lock file, workflow (including the `/specguard approve` command), and an optional pre-commit hook. See [Local tools](#local-tools).
+> Prefer one command? `specguard init` scaffolds all of this for you — lock file, workflow (including the `/specguard approve` command), optional roles/regions, and an optional pre-commit hook. Every generated file is **self-documenting**, so you can configure it without leaving the file.
+
+<details>
+<summary><strong>What <code>specguard init</code> generates</strong></summary>
+
+`.specguard/lock.json` — your locked goal and scope:
+
+```json
+{
+  "goal": "A CLI that converts Markdown to PDF",
+  "scope_in": ["Markdown parsing", "PDF rendering", "CLI flags"],
+  "scope_out": ["GUI", "cloud sync", "collaboration"]
+}
+```
+
+`.specguard/config.yml` — behavior; every key is commented out (so the file is inert defaults) and explained inline:
+
+```yaml
+# SpecGuard settings — every key is optional. All keys are commented out below,
+# so this file changes nothing until you uncomment a key: the values shown ARE
+# the defaults. Each comment explains what the key does and its allowed values.
+
+# watch: which files the gate classifies. Anything not matched here is ignored.
+# watch:
+#   - "README.md"
+#   - "CLAUDE.md"
+#   - "AGENTS.md"
+#   - "ARCHITECTURE.md"
+#   - "*.kilo"
+#   - ".specguard/**"
+
+# block_threshold: confidence (0.0-1.0) a SCOPE_CHANGE needs to BLOCK. Below it,
+# the gate warns instead of blocking. Higher = fewer blocks, more warnings.
+# block_threshold: 0.75
+
+# on_error: what to do when the classifier/vendor call fails.
+#   warn (default) = pass the PR with a loud "could not classify" warning
+#   fail           = block the PR until classification succeeds
+# on_error: warn
+
+# provider: which LLM backend classifies. One of:
+#   anthropic (default) | openai | gemini | openrouter
+# Non-anthropic providers require an explicit `model:` below.
+# provider: anthropic
+
+# model: the model id to classify with. claude-sonnet-4-6 is the calibrated
+# default; claude-opus-4-8 is blocked by a project guardrail.
+# model: claude-sonnet-4-6
+
+# max_diff_chars: diffs larger than this (per file) are truncated before
+# classifying, to bound token cost. Must be > 0.
+# max_diff_chars: 30000
+```
+
+`.specguard/roles.yml` — who may approve (its presence flips warn → block); the rule vocabulary is documented inline:
+
+```yaml
+# rules: per file or glob, who may do what. Two rule keys are supported:
+#   edit: <role>                     only this role may edit the path
+#                                    (deterministic hard block, no AI)
+#   scope_changes: {approve: <role>} whose APPROVED review unblocks a
+#                                    SCOPE_CHANGE the classifier flags
+# Additive, in-scope changes always pass silently — there is no rule to
+# configure for them, and no such rule key exists.
+roles:
+  architect: [your-github-username]
+rules:
+  ".specguard/**":            # protect the lock/roles files themselves
+    edit: architect
+  "README.md":                # who may approve scope changes here
+    scope_changes: {approve: architect}
+```
+
+`.specguard/regions.yml` — optional section locking; ships inert (`files: {}`) with a worked example in the comments:
+
+```yaml
+# SpecGuard section locking (optional) — govern only named heading regions of a
+# file, leaving the rest free to edit. Under `files:`, map a watched file to the
+# headings whose sections should be governed; edits outside them pass quietly.
+# files:
+#   "ARCHITECTURE.md":
+#     - "Goal"
+#     - "Out of Scope"
+files: {}
+```
+
+</details>
 
 <details>
 <summary><strong>Full workflow with the <code>/specguard approve</code> comment command</strong></summary>
