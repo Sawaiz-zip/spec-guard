@@ -3,9 +3,9 @@
 How SpecGuard turns a pull request into a governance verdict, and how its surfaces share one
 validator core.
 
-> Diagrams are exported to PNG (below) and also kept as [Mermaid](https://mermaid.js.org/) source
-> in each collapsible — the source is the editable master. To regenerate an image, paste the
-> Mermaid into [mermaid.live](https://mermaid.live) and use **Actions → Download PNG/SVG**.
+> Diagrams are hand-authored SVGs (`docs/images/*.svg`) — crisp at any zoom and version-controlled.
+> A [Mermaid](https://mermaid.js.org/) equivalent is kept in each collapsible as a quick-edit
+> reference; render it at [mermaid.live](https://mermaid.live) if you need a throwaway variant.
 
 ## Contents
 
@@ -20,7 +20,7 @@ validator core.
 The path every pull request takes, from opened to verdict. Hard blocks are deterministic (no AI);
 only a watched-file scope change reaches the classifier.
 
-![SpecGuard PR gate decision flow](images/pr-gate-flow.png)
+![SpecGuard PR gate decision flow](images/pr-gate-flow.svg)
 
 **Key points**
 
@@ -64,7 +64,7 @@ flowchart TD
 Every surface calls the same validator core and differs only in how the verdict is delivered — so a
 change classified in CI is identical to the one shown by the CLI, hook, MCP server, or App.
 
-![SpecGuard system overview: surfaces calling a shared validator core](images/system-overview.png)
+![SpecGuard system overview: surfaces calling a shared validator core](images/system-overview.svg)
 
 **Key points**
 
@@ -121,7 +121,7 @@ flowchart LR
 Any one authorized approval clears a block. Approval re-runs the gate in place — no new commit
 needed — and a fresh push after approval resets to blocked (no stale approvals).
 
-![SpecGuard approval sequence: block, approve, re-run, unblock](images/approval-sequence.png)
+![SpecGuard approval sequence: block, approve, re-run, unblock](images/approval-sequence.svg)
 
 **Key points**
 

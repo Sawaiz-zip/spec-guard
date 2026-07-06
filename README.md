@@ -487,7 +487,7 @@ Writes one JSON record per verdict — file, scope, classification, confidence, 
 
 The only enforceable boundary is merge time — everything else is advisory. A wrong Friday block means uninstall by Monday, so additive changes always pass silently, hard blocks are deterministic (no AI), and probabilistic verdicts always show their confidence and never block without an explanation.
 
-Full constitution: [`.specify/memory/constitution.md`](.specify/memory/constitution.md) · Detailed runbook: [`docs/quickstart.md`](docs/quickstart.md)
+[Architecture & flow diagrams](docs/architecture.md) · Full constitution: [`.specify/memory/constitution.md`](.specify/memory/constitution.md) · Detailed runbook: [`docs/quickstart.md`](docs/quickstart.md)
 
 ---
 
