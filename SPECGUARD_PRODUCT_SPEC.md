@@ -3,24 +3,27 @@
 > **Working name:** SpecGuard (alternatives considered: Project DNA, ScopeShield, GoalGuard, DocGovernor)
 > **One-liner:** "CODEOWNERS understands file paths. We understand what the change *means* — and who's allowed to mean it."
 > **Document purpose:** Complete reference of everything discussed and decided, to be used as the foundation for development with Claude.
-> **Date:** June 2026 · **Implementation status updated:** 2026-06-29
+> **Date:** June 2026 · **Implementation status updated:** 2026-07-06
 
 ---
 
-## 0. Implementation Status (as of 2026-06-29)
+## 0. Implementation Status (as of 2026-07-06)
 
-This document is the original strategic reference; the project has since shipped through
-Phase 2's framework-adapter slice. What is real today:
+This document is the original strategic reference; the project has since shipped Phases 0–3
+(the CI gate, local tools, provider-agnostic classifier, framework adapters, approval commands,
+and advanced governance) and published the GitHub Action to the Marketplace. What is real today:
 
 | Capability | Status | Where |
 |---|---|---|
 | Validator core + semantic classifier (ADDITIVE / SCOPE_CHANGE / PROTECTED_VIOLATION) | ✅ Shipped | `specs/001-pr-spec-gate/` |
-| GitHub Action merge gate · PR annotations · role-based approval via native reviews | ✅ Shipped | `specs/001-pr-spec-gate/` |
-| Local tools: CLI (`init`, `check`), pre-commit hook, MCP server | ✅ Shipped | `specs/002-local-tools/` |
+| GitHub Action merge gate · PR annotations · role-based approval via native reviews · [on the Marketplace](https://github.com/marketplace/actions/specguard-ci) | ✅ Shipped | `specs/001-pr-spec-gate/` |
+| Local tools: CLI (`init`, `check`, `approve`), pre-commit hook, MCP server | ✅ Shipped | `specs/002-local-tools/` |
 | Provider-agnostic classifier (Anthropic default · OpenAI · Gemini · OpenRouter) · Python 3.10+ | ✅ Shipped | `specs/003-provider-agnostic/` |
 | **Framework adapters** — Spec Kit + OpenSpec governance overlay (auto-derive the lock from existing spec files); explicit-lock override; governance-source reporting | ✅ Shipped | `specs/004-framework-adapters/` |
-| GitHub **App** (webhooks, Checks API, `/specguard approve` comment) · GitLab equivalent | ⚪ Planned | Phase 2 remainder |
-| Section-level locking · monorepo (per-dir `.specguard/`) · audit export · enterprise self-host | ⚪ Planned | Phase 3 |
+| **Approval commands** — `/specguard approve` PR comment · `specguard approve` CLI · MCP `check_permission` + write-time redirect | ✅ Shipped | `specs/005-approval-commands/` |
+| **Advanced governance** — section-level locking · monorepo (per-dir `.specguard/`) · audit export | ✅ Shipped | `specs/007-advanced/` |
+| GitHub **App** — webhooks, Checks API, fork-PR governance, bot-vs-human identity | 🟡 Code-complete, not deployed | `specs/006-github-app/` |
+| GitLab equivalent · enterprise self-host (LDAP/SSO, support contracts) | ⚪ Planned | future |
 
 **Calibration honesty:** Anthropic + Sonnet 4.6 is the calibration-verified default (0 false BLOCKs,
 ≥90% recall on the golden corpus). Other providers are wired and tested for selection/guardrail but
@@ -199,13 +202,15 @@ Merge blocked ⛔ (required check: specguard)
 - Every verdict + approval recorded: who changed which spec file, classification, who approved, when
 - Lives as (a) specguard log (exportable for compliance/SOC2-style asks) and (b) immutable PR history (which auditors already trust)
 
-### F7. Agent Containment ("keep Claude in a direction")
-- MCP server (shipped) exposes three advisory tools: `check_proposed_change` (full verdict for content
-  the agent is about to write), `get_scope_lock`, and `list_watched_paths`. These consume the same
-  governance resolver as the gate, so an agent sees the same locked scope — including a Spec Kit / OpenSpec
-  derived lock — that the merge check will enforce. *(The original sketch's `validate_change` /
-  `check_permission` / `lock_scope` / `unlock_scope` map onto these or remain future work; the write-time
-  "draft it as a change proposal instead?" redirect is a planned enhancement.)*
+### F7. Agent Containment ("keep Claude in a direction") — ✅ Shipped (`specs/002-local-tools/`, `specs/005-approval-commands/`)
+- MCP server exposes four advisory tools: `check_proposed_change` (full verdict for content the agent
+  is about to write — and, when a change would block, a `redirect` naming the approver role and
+  suggesting a separate proposal), `check_permission` (may this identity make this class of change to
+  this file?), `get_scope_lock`, and `list_watched_paths`. These consume the same governance resolver
+  as the gate, so an agent sees the same locked scope — including a Spec Kit / OpenSpec derived lock —
+  that the merge check will enforce. *(The write-time "draft it as a change proposal instead?" redirect
+  shipped in 005; `lock_scope` / `unlock_scope` from the original sketch remain out of scope — the lock
+  is edited as a governed file, not via an MCP call.)*
 - Agent learns the locked scope at write time and gets redirected before drafting out-of-scope content ("Want me to draft it as a change proposal instead?")
 - Agents flagged in roles.yml as `propose_only` can never produce a mergeable direct edit to protected files — server-side check sees the commit author/PR opener identity
 - Overall-domain verification: the classifier always compares against the locked goal, so domain consistency is checked on every spec-file change regardless of which tool made it
@@ -229,7 +234,7 @@ in the CI summary, the local `specguard check` output, and the MCP payload.
 - **Plain adapter:** explicit `.specguard/lock.json` (or configured `.md` paths — CLAUDE.md, AGENTS.md,
   `.kilo`, arbitrary watched files); auto-selected when no framework is detected. Unchanged from before.
 
-*Future (Phase 2 remainder):* integrate via `.specify/extensions.yml` hooks and gate the OpenSpec
+*Future enhancement:* integrate via `.specify/extensions.yml` hooks and gate the OpenSpec
 `archive` step so deltas can't merge without a recorded role approval; a config key to force a specific
 adapter. The current slice ships file-derived governance and the precedence switch.
 
@@ -342,10 +347,10 @@ is intentionally *not* persisted by us — it rides GitHub's native review state
 **Success signal:** strangers file feature requests. Silence + 40 stars = market said no, cheaply.
 
 ### Phase 1 — Local DX layer — ✅ Shipped (`specs/002-local-tools/`)
-6. CLI (`init`, `check`) — shipped; `approve`/`status` fold into the planned App + comment command
+6. CLI (`init`, `check`) — shipped; `approve` shipped in Phase 2 (`specs/005-approval-commands/`)
 7. Pre-commit hook (warn in team mode, self-approve speed bump in solo mode) — shipped
-8. MCP server (`check_proposed_change`, `get_scope_lock`, `list_watched_paths`) — shipped; MCP-registry
-   submission is a distribution follow-up
+8. MCP server (`check_proposed_change`, `check_permission`, `get_scope_lock`, `list_watched_paths`) —
+   shipped (`check_permission` added in 005); MCP-registry submission is a distribution follow-up
 
 ### Phase 1.5 — Provider-agnostic classifier — ✅ Shipped (`specs/003-provider-agnostic/`)
 - Classifier selectable via `provider:` — Anthropic (calibrated default), OpenAI, Gemini, OpenRouter —
@@ -355,14 +360,22 @@ is intentionally *not* persisted by us — it rides GitHub's native review state
 9. **Framework adapters — ✅ Shipped (`specs/004-framework-adapters/`)**: Spec Kit + OpenSpec governance
    overlay deriving the lock from existing spec files (F8), with the explicit-lock override and
    precedence switch. Spec Kit dogfooded; OpenSpec documented-format (not yet live-validated).
-10. ⚪ Deepen the integration: `.specify/extensions.yml` hook; gate the OpenSpec `archive` step; reuse
-    `proposal.md` scope sections as a first-class, live-validated lock source.
-11. ⚪ Proper GitHub App (webhooks + Checks API + `/specguard approve` comment command); GitLab equivalent.
+10. **Approval commands — ✅ Shipped (`specs/005-approval-commands/`)**: `/specguard approve` PR comment
+    command, `specguard approve` CLI, and the MCP `check_permission` tool + write-time redirect. All
+    three approval paths (native review, comment, CLI) resolve authorization server-side against `roles.yml`.
+11. **GitHub App — 🟡 Code-complete, not deployed (`specs/006-github-app/`)**: webhooks + Checks API +
+    fork-PR governance + bot-vs-human identity, built and tested. Live registration/deploy is a
+    user-gated ops step; GitLab equivalent remains a separate future spec.
+12. ⚪ Deepen the framework integration: `.specify/extensions.yml` hook; gate the OpenSpec `archive` step;
+    reuse `proposal.md` scope sections as a first-class, live-validated lock source.
 
-### Phase 3 — Enterprise (only if Phase 0–2 show traction) — ⚪ Planned
-12. Section-level locking (the open design problem)
-13. Self-hosted Docker validation service; LDAP/SSO identity mapping; audit export
-14. Slack approval bot (optional); support contracts
+### Phase 3 — Advanced governance — ✅ Shipped (`specs/007-advanced/`)
+13. Section-level locking (`regions.yml`), monorepo multi-scope (per-dir `.specguard/`), audit export —
+    all shipped.
+
+### Phase 4 — Enterprise (only if traction warrants) — ⚪ Planned
+14. Self-hosted Docker validation service; LDAP/SSO identity mapping
+15. Slack approval bot (optional); support contracts
 
 ### Explicitly out of scope (decided against)
 - ❌ Web dashboard / separate website / separate login
