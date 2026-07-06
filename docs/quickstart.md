@@ -1,6 +1,7 @@
 # SpecGuard Quickstart & Validation Guide
 
-Five-minute setup is in the [README](../README.md#quickstart). This guide covers
+Five-minute setup is in the [README](../README.md#quick-start). For how the pieces fit
+together, see the [Architecture & Flow](architecture.md) diagrams. This guide covers
 running SpecGuard's own checks and validating an installation end-to-end.
 
 ## V1. Unit suite (no API key)
