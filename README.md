@@ -172,6 +172,9 @@ The comment command grants no authority on its own — it only retriggers the ga
 
 All config lives in `.specguard/`. Only `lock.json` is required; the rest are optional and default sensibly.
 
+> [!TIP]
+> You don't have to write these by hand. `specguard init` offers to scaffold all four files — `lock.json`, `config.yml`, `roles.yml`, and `regions.yml` — and every generated file is **self-documenting**: each key is explained inline, so you can configure it without leaving the file.
+
 ### 1. `lock.json` — the goal and scope *(required)*
 
 ```json

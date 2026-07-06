@@ -196,6 +196,7 @@ class TestInit:
                 "SSO, billing",                # scope_out
                 "n",                           # config.yml offer
                 "n",                           # roles offer
+                "n",                           # regions offer
                 "n",                           # workflow offer
                 "n",                           # hook offer
             ]
@@ -205,6 +206,9 @@ class TestInit:
         assert code == 0
         lock = json.loads((git_repo.root / ".specguard/lock.json").read_text())
         assert lock["goal"] == "A web app for recipes"
+        # generated lock.json carries no unexplained metadata fields (US3 / SC-005)
+        assert "locked_at" not in lock
+        assert "locked_by" not in lock
         assert lock["scope_in"] == ["recipes", "search"]
         assert lock["scope_out"] == ["SSO", "billing"]
         out = capsys.readouterr().out
@@ -213,7 +217,7 @@ class TestInit:
 
     def test_goal_reprompted_until_nonempty(self, git_repo, monkeypatch):
         monkeypatch.chdir(git_repo.root)
-        answers = iter(["", "", "Real goal", "", "", "n", "n", "n", "n"])
+        answers = iter(["", "", "Real goal", "", "", "n", "n", "n", "n", "n"])
         monkeypatch.setattr("builtins.input", lambda _: next(answers))
         assert cli.main(["init"]) == 0
         lock = json.loads((git_repo.root / ".specguard/lock.json").read_text())
@@ -240,6 +244,7 @@ class TestInit:
         assert (git_repo.root / ".specguard/lock.json").exists()
         assert not (git_repo.root / ".specguard/config.yml").exists()
         assert not (git_repo.root / ".specguard/roles.yml").exists()
+        assert not (git_repo.root / ".specguard/regions.yml").exists()
         assert "skipped" in capsys.readouterr().out
 
     def test_roles_offer_writes_valid_roles(self, git_repo, monkeypatch):
@@ -253,6 +258,7 @@ class TestInit:
                 "y",         # roles offer
                 "",          # role name → default architect
                 "alice, bob",  # members
+                "n",         # regions
                 "n",         # workflow
                 "n",         # hook
             ]
@@ -269,6 +275,77 @@ class TestInit:
         monkeypatch.chdir(tmp_path)
         assert cli.main(["init", "--yes"]) == 2
         assert "not a git repository" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# 008: self-documenting config templates
+# ---------------------------------------------------------------------------
+
+
+class TestSelfDocumentingTemplates:
+    """Every file `init` generates must parse and carry inline documentation."""
+
+    def _init_all(self, git_repo, monkeypatch):
+        """Run `init` accepting config, roles, and regions offers; return the dir."""
+        monkeypatch.chdir(git_repo.root)
+        answers = iter(
+            [
+                "Goal",        # goal
+                "a, b",        # scope_in
+                "x, y",        # scope_out
+                "y",           # config offer
+                "y",           # roles offer
+                "",            # role name → architect
+                "alice",       # members
+                "y",           # regions offer
+                "n",           # workflow
+                "n",           # hook
+            ]
+        )
+        monkeypatch.setattr("builtins.input", lambda _: next(answers))
+        assert cli.main(["init"]) == 0
+        return git_repo.root / ".specguard"
+
+    def test_roles_template_is_documented_and_accurate(self, git_repo, monkeypatch):
+        from specguard.config import parse_roles
+
+        text = (self._init_all(git_repo, monkeypatch) / "roles.yml").read_text()
+        parse_roles(text)  # US1 / FR-007: parses despite comments
+        lowered = text.lower()
+        for marker in ("edit", "scope_changes", "approve", "additive"):
+            assert marker in lowered, f"roles.yml missing documentation for {marker!r}"
+        # must NOT invent a rule key the parser does not support (FR-001/010)
+        assert "additive_changes" not in text
+
+    def test_config_template_explains_each_key(self, git_repo, monkeypatch):
+        from specguard.config import parse_config
+
+        text = (self._init_all(git_repo, monkeypatch) / "config.yml").read_text()
+        parse_config(text)  # US2 / FR-007
+        # behavioral explanation, not just the default value
+        assert "warn" in text and "fail" in text        # on_error behavior
+        for key in ("watch", "block_threshold", "on_error", "provider",
+                    "model", "max_diff_chars"):
+            assert key in text, f"config.yml missing key {key!r}"
+
+    def test_regions_template_offered_and_documented(self, git_repo, monkeypatch):
+        from specguard.config import parse_regions
+
+        regions = self._init_all(git_repo, monkeypatch) / "regions.yml"
+        assert regions.exists()                         # US3 / FR-004
+        text = regions.read_text()
+        parse_regions(text)                             # FR-007
+        assert "files:" in text and "Out of Scope" in text  # documented mapping
+
+    def test_generated_lock_has_no_mystery_fields(self, git_repo, monkeypatch):
+        import json as _json
+
+        from specguard.config import parse_lock
+
+        text = (self._init_all(git_repo, monkeypatch) / "lock.json").read_text()
+        parse_lock(text)                                # FR-007
+        data = _json.loads(text)
+        assert set(data) == {"goal", "scope_in", "scope_out"}  # US3 / SC-005
 
 
 # ---------------------------------------------------------------------------
