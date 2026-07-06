@@ -341,7 +341,7 @@ is intentionally *not* persisted by us — it rides GitHub's native review state
 **Goal: the smallest cutting piece — a GitHub App (or Action) that classifies spec-file diffs on PRs and blocks unapproved scope changes.**
 1. Production-quality validator core (diff-focused context, strict JSON, confidence thresholds, additive auto-pass)
 2. GitHub Actions integration first (cheaper than a full App): required check, PR annotation with explanation, approval detection via PR reviews from identities listed in a minimal roles.yml
-3. Minimal roles.yml: roles → identities; per-path rules with `additive_changes` / `scope_changes` / `edit` keys
+3. Minimal roles.yml: roles → identities; per-path rules with `edit` and `scope_changes` (`approve`) keys — additive changes always auto-pass and need no rule key
 4. Plain mode only (configured .md paths + CLAUDE.md/AGENTS.md defaults)
 5. README with the one-liner positioning; MIT license; publish; post (Twitter/HN/Claude community); watch the issue tracker
 **Success signal:** strangers file feature requests. Silence + 40 stars = market said no, cheaply.

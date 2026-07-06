@@ -24,10 +24,12 @@ from specguard.classifier import ClassifierAdapter
 from specguard.config import (
     CONFIG_PATH,
     LOCK_PATH,
+    REGIONS_PATH,
     ROLES_PATH,
     ConfigError,
     parse_config,
     parse_lock,
+    parse_regions,
     parse_roles,
 )
 from specguard.engine import evaluate_pr
@@ -97,7 +99,11 @@ jobs:
 """
 
 CONFIG_TEMPLATE = """\
-# SpecGuard settings — every key is optional; these are the defaults.
+# SpecGuard settings — every key is optional. All keys are commented out below,
+# so this file changes nothing until you uncomment a key: the values shown ARE
+# the defaults. Each comment explains what the key does and its allowed values.
+
+# watch: which files the gate classifies. Anything not matched here is ignored.
 # watch:
 #   - "README.md"
 #   - "CLAUDE.md"
@@ -105,10 +111,46 @@ CONFIG_TEMPLATE = """\
 #   - "ARCHITECTURE.md"
 #   - "*.kilo"
 #   - ".specguard/**"
+
+# block_threshold: confidence (0.0-1.0) a SCOPE_CHANGE needs to BLOCK. Below it,
+# the gate warns instead of blocking. Higher = fewer blocks, more warnings.
 # block_threshold: 0.75
-# on_error: warn          # vendor outage: pass with a loud warning ("fail" to block)
+
+# on_error: what to do when the classifier/vendor call fails.
+#   warn (default) = pass the PR with a loud "could not classify" warning
+#   fail           = block the PR until classification succeeds
+# on_error: warn
+
+# provider: which LLM backend classifies. One of:
+#   anthropic (default) | openai | gemini | openrouter
+# Non-anthropic providers require an explicit `model:` below.
+# provider: anthropic
+
+# model: the model id to classify with. claude-sonnet-4-6 is the calibrated
+# default; claude-opus-4-8 is blocked by a project guardrail.
 # model: claude-sonnet-4-6
+
+# max_diff_chars: diffs larger than this (per file) are truncated before
+# classifying, to bound token cost. Must be > 0.
 # max_diff_chars: 30000
+"""
+
+REGIONS_TEMPLATE = """\
+# SpecGuard section locking (optional) — govern only named heading regions of a
+# file, leaving the rest free to edit.
+#
+# Under `files:`, map a watched file to the list of top-level headings whose
+# sections should be governed. Edits OUTSIDE every listed heading pass quietly
+# without ever reaching the classifier (strictly less friction, never more).
+# If a listed heading is renamed or removed, the check fails loudly rather than
+# silently leaving the section un-governed — so rename it here deliberately.
+#
+# Example (uncomment and adapt):
+# files:
+#   "ARCHITECTURE.md":
+#     - "Goal"
+#     - "Out of Scope"
+files: {}
 """
 
 HOOK_SCRIPT = """\
@@ -408,8 +450,7 @@ def _cmd_init(args: argparse.Namespace) -> int:
         scope_out = _ask_list("Out-of-scope topics (comma-separated, may be empty): ")
 
     lock_text = json.dumps(
-        {"goal": goal, "scope_in": scope_in, "scope_out": scope_out,
-         "locked_at": None, "locked_by": None},
+        {"goal": goal, "scope_in": scope_in, "scope_out": scope_out},
         indent=2,
     ) + "\n"
     parse_lock(lock_text)  # round-trip before writing (contract guarantee)
@@ -450,16 +491,48 @@ def _offer_optional_files(
         role = _ask("Approver role name [architect]: ") or "architect"
         members = _ask_list("GitHub usernames for this role (comma-separated): ")
         roles_text = (
+            "# SpecGuard roles & rules. The presence of this file switches the gate\n"
+            "# from advisory WARN mode into enforcing BLOCK mode.\n"
+            "#\n"
+            "# roles: map a role name to the GitHub usernames that belong to it.\n"
             f"roles:\n  {role}: [{', '.join(members)}]\n"
-            f"rules:\n"
-            f'  ".specguard/**":\n    edit: {role}\n'
-            f'  "README.md":\n    scope_changes: {{approve: {role}}}\n'
+            "\n"
+            "# rules: per file or glob, who may do what. Two rule keys are supported:\n"
+            "#   edit: <role>                     only this role may edit the path\n"
+            "#                                    (deterministic hard block, no AI)\n"
+            "#   scope_changes: {approve: <role>} whose APPROVED review unblocks a\n"
+            "#                                    SCOPE_CHANGE the classifier flags\n"
+            "# Additive, in-scope changes always pass silently — there is no rule to\n"
+            "# configure for them, and no such rule key exists.\n"
+            "rules:\n"
+            '  ".specguard/**":            # protect the lock/roles files themselves\n'
+            f"    edit: {role}\n"
+            '  "README.md":                # who may approve scope changes here\n'
+            f"    scope_changes: {{approve: {role}}}\n"
+            "\n"
+            "# More examples — uncomment and adapt:\n"
+            '#  "ARCHITECTURE.md":\n'
+            f"#    edit: {role}\n"
+            '#  "docs/**":\n'
+            f"#    scope_changes: {{approve: {role}}}\n"
         )
         parse_roles(roles_text)
         roles_file.write_text(roles_text)
         created.append(ROLES_PATH)
     else:
         skipped.append(f"{ROLES_PATH} — roles switch warn mode to enforce mode")
+
+    regions_file = repo_root / REGIONS_PATH
+    if args.yes or regions_file.exists():
+        skipped.append(f"{REGIONS_PATH} — section locking (govern only named headings)")
+    elif _ask_yes(
+        f"Configure section locking now (govern only parts of a file)? Writes {REGIONS_PATH}"
+    ):
+        parse_regions(REGIONS_TEMPLATE)
+        regions_file.write_text(REGIONS_TEMPLATE)
+        created.append(REGIONS_PATH)
+    else:
+        skipped.append(f"{REGIONS_PATH} — section locking (govern only named headings)")
 
     workflow_file = repo_root / ".github" / "workflows" / "specguard.yml"
     if args.yes or workflow_file.exists():
