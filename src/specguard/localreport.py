@@ -48,6 +48,8 @@ def _verdict_lines(verdict: Verdict) -> list[str]:
             "   the merge gate hard-blocks edits to this path unless the PR "
             "author's GitHub login is in the authorized role",
         ]
+    if verdict.reason == "region_ungoverned":
+        return [f"✅ {verdict.file} — outside the locked region(s); not classified"]
     assert c is not None
     icon = "❌" if verdict.outcome == "BLOCK" else "⚠️ "
     lines = [

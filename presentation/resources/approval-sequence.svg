@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1020 560" font-family="'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+    <marker id="sr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ef4444"/></marker>
+    <marker id="sg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22c55e"/></marker>
+  </defs>
+
+  <rect x="1" y="1" width="1018" height="558" rx="16" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="26" font-weight="700" fill="#0f172a">Approving a blocked scope change</text>
+  <text x="40" y="76" font-size="14.5" fill="#64748b">Any one authorized approval clears the block; approval re-runs the gate in place — no new commit needed.</text>
+
+  <!-- lifelines -->
+  <g stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="3 5">
+    <line x1="150" y1="142" x2="150" y2="500"/>
+    <line x1="430" y1="142" x2="430" y2="500"/>
+    <line x1="690" y1="142" x2="690" y2="500"/>
+    <line x1="920" y1="142" x2="920" y2="500"/>
+  </g>
+
+  <!-- activation bars -->
+  <rect x="424" y="180" width="12" height="258" rx="3" fill="#eef2f7" stroke="#e2e8f0"/>
+  <rect x="684" y="216" width="12" height="52" rx="3" fill="#f3ecfe" stroke="#e9d5ff"/>
+  <rect x="684" y="350" width="12" height="88" rx="3" fill="#f3ecfe" stroke="#e9d5ff"/>
+
+  <!-- participant boxes -->
+  <rect x="70" y="100" width="160" height="42" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="150" y="126" font-size="14" font-weight="600" fill="#334155" text-anchor="middle">Contributor</text>
+
+  <rect x="355" y="100" width="150" height="42" rx="10" fill="#0f172a"/>
+  <text x="430" y="126" font-size="14" font-weight="600" fill="#ffffff" text-anchor="middle">GitHub PR</text>
+
+  <rect x="600" y="100" width="180" height="42" rx="10" fill="#7c3aed"/>
+  <text x="690" y="126" font-size="14" font-weight="600" fill="#ffffff" text-anchor="middle">SpecGuard gate</text>
+
+  <rect x="820" y="100" width="200" height="42" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="920" y="126" font-size="14" font-weight="600" fill="#334155" text-anchor="middle">Authorized role member</text>
+
+  <!-- ===== messages ===== -->
+  <!-- 1 push -->
+  <line x1="150" y1="180" x2="424" y2="180" stroke="#64748b" stroke-width="1.8" marker-end="url(#s)"/>
+  <rect x="152" y="160" width="270" height="18" rx="4" fill="#ffffff"/>
+  <text x="287" y="174" font-size="12.5" fill="#334155" text-anchor="middle">push a scope-changing edit to a watched file</text>
+
+  <!-- 2 run gate -->
+  <line x1="436" y1="216" x2="684" y2="216" stroke="#64748b" stroke-width="1.8" marker-end="url(#s)"/>
+  <rect x="522" y="196" width="76" height="18" rx="4" fill="#ffffff"/>
+  <text x="560" y="210" font-size="12.5" fill="#334155" text-anchor="middle">run gate</text>
+
+  <!-- 3 block (return, dashed) -->
+  <line x1="684" y1="256" x2="436" y2="256" stroke="#ef4444" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#sr)"/>
+  <rect x="452" y="236" width="216" height="18" rx="4" fill="#ffffff"/>
+  <text x="560" y="250" font-size="12.5" font-weight="600" fill="#b91c1c" text-anchor="middle">Block · needs approval from a role</text>
+
+  <!-- 4 approve -->
+  <line x1="908" y1="306" x2="436" y2="306" stroke="#64748b" stroke-width="1.8" marker-end="url(#s)"/>
+  <rect x="548" y="286" width="254" height="18" rx="4" fill="#ffffff"/>
+  <text x="675" y="300" font-size="12.5" fill="#334155" text-anchor="middle">approve · native review / comment / CLI</text>
+
+  <!-- 5 re-run -->
+  <line x1="436" y1="350" x2="684" y2="350" stroke="#64748b" stroke-width="1.8" marker-end="url(#s)"/>
+  <rect x="470" y="330" width="180" height="18" rx="4" fill="#ffffff"/>
+  <text x="560" y="344" font-size="12.5" fill="#334155" text-anchor="middle">re-run gate · same head commit</text>
+
+  <!-- 6 self loop -->
+  <path d="M696,380 C 740,380 740,404 700,404" fill="none" stroke="#64748b" stroke-width="1.8" marker-end="url(#s)"/>
+  <rect x="690" y="384" width="228" height="18" rx="4" fill="#ffffff"/>
+  <text x="806" y="398" font-size="12.5" fill="#334155" text-anchor="middle">re-check authorization at trusted base</text>
+
+  <!-- 7 pass (return, dashed) -->
+  <line x1="684" y1="430" x2="436" y2="430" stroke="#22c55e" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#sg)"/>
+  <rect x="482" y="410" width="156" height="18" rx="4" fill="#ffffff"/>
+  <text x="560" y="424" font-size="12.5" font-weight="600" fill="#15803d" text-anchor="middle">Pass · merge unblocked</text>
+
+  <!-- note -->
+  <rect x="250" y="462" width="520" height="34" rx="8" fill="#fffbeb" stroke="#fde68a"/>
+  <text x="510" y="484" font-size="12.5" fill="#78350f" text-anchor="middle">A new push after approval resets the gate to blocked — no stale approvals.</text>
+</svg>

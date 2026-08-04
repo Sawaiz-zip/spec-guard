@@ -98,7 +98,7 @@ def check_proposed_change(
 
     verdict = evaluate_pr(
         [changed], governance.lock, governance.config, governance.roles,
-        pr, adapter, no_approvals,
+        pr, adapter, no_approvals, regions_config=governance.regions,
     )[0]
 
     if verdict.reason == "classifier_error":

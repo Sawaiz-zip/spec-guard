@@ -17,8 +17,10 @@ from typing import Literal
 
 from specguard.config import (
     CONFIG_PATH,
+    REGIONS_PATH,
     ROLES_PATH,
     parse_config,
+    parse_regions,
     parse_roles,
 )
 from specguard.gitdiff import (
@@ -30,7 +32,7 @@ from specguard.gitdiff import (
     worktree_changes,
 )
 from specguard.governance import GovernanceSource, resolve_lock
-from specguard.models import Config, RolesConfig, ScopeLock
+from specguard.models import Config, RegionsConfig, RolesConfig, ScopeLock
 
 SnapshotMode = Literal["worktree", "staged", "range"]
 
@@ -51,6 +53,7 @@ class BaselineGovernance:
     lock: ScopeLock | None
     config: Config
     roles: RolesConfig | None
+    regions: RegionsConfig | None = None
     source: GovernanceSource = "plain"
 
 
@@ -124,7 +127,7 @@ def resolve_snapshot(
 def load_baseline_governance(
     repo_root: Path, base_ref: str, changed_paths: list[str] | None = None
 ) -> BaselineGovernance:
-    """Lock/config/roles parsed from the baseline commit (FR-010).
+    """Lock/config/roles/regions parsed from the baseline commit (FR-010).
 
     The lock is resolved via the governance overlay (explicit lock > Spec Kit >
     OpenSpec > plain). `changed_paths` is forwarded so framework derivation sees the
@@ -138,4 +141,9 @@ def load_baseline_governance(
     roles = parse_roles(
         show_file(repo_root, base_ref, ROLES_PATH), origin.format(path=ROLES_PATH)
     )
-    return BaselineGovernance(lock=lock, config=config, roles=roles, source=src)
+    regions = parse_regions(
+        show_file(repo_root, base_ref, REGIONS_PATH), origin.format(path=REGIONS_PATH)
+    )
+    return BaselineGovernance(
+        lock=lock, config=config, roles=roles, regions=regions, source=src
+    )

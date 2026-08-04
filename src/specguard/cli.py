@@ -315,6 +315,7 @@ def _run_check(
             pr,
             adapter,
             no_approvals,
+            regions_config=governance.regions,
         )
 
     if args.hook:

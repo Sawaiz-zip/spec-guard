@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "specguard-ci"
-version = "0.4.1"
+version = "0.4.2"
 description = "Semantic governance gate for spec files — blocks PR changes that drift from your locked project goal or scope."
 readme = "README.md"
 license = "MIT"

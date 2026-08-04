@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 130" width="480" height="130">
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="3" dy="3" stdDeviation="0" flood-color="#000" flood-opacity="1"/>
+    </filter>
+  </defs>
+
+  <!-- Cream background with thick comic border -->
+  <rect width="480" height="130" rx="14" fill="#fffbe6"/>
+  <rect width="480" height="130" rx="14" fill="none" stroke="#1a1a1a" stroke-width="4"/>
+
+  <!-- Starburst behind shield -->
+  <g transform="translate(62,65)">
+    <polygon points="0,-44 7,-14 22,-35 11,-7 38,-18 16,0 38,18 11,7 22,35 7,14 0,44 -7,14 -22,35 -11,7 -38,18 -16,0 -38,-18 -11,-7 -22,-35 -7,-14"
+             fill="#fde047" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Shield body -->
+  <g transform="translate(62,65)" filter="url(#shadow)">
+    <path d="M0,-40 C0,-40 -28,-32 -28,-32 L-28,8 C-28,28 -10,42 0,48 C10,42 28,28 28,8 L28,-32 Z"
+          fill="#ef4444" stroke="#1a1a1a" stroke-width="3.5" stroke-linejoin="round"/>
+    <!-- Shield inner lighter panel -->
+    <path d="M0,-32 C0,-32 -20,-25 -20,-25 L-20,8 C-20,22 -8,34 0,39 C8,34 20,22 20,8 L20,-25 Z"
+          fill="#f87171" stroke="none"/>
+
+    <!-- Googly eye left -->
+    <circle cx="-10" cy="-8" r="9" fill="white" stroke="#1a1a1a" stroke-width="2.5"/>
+    <circle cx="-8" cy="-6" r="5" fill="#1a1a1a"/>
+    <circle cx="-6" cy="-8" r="2" fill="white"/>
+
+    <!-- Googly eye right -->
+    <circle cx="10" cy="-8" r="9" fill="white" stroke="#1a1a1a" stroke-width="2.5"/>
+    <circle cx="12" cy="-6" r="5" fill="#1a1a1a"/>
+    <circle cx="14" cy="-8" r="2" fill="white"/>
+
+    <!-- Smirk mouth -->
+    <path d="M-7,10 Q0,20 9,12" fill="none" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- Sweat drop (stressed out guarding) -->
+    <ellipse cx="22" cy="-20" rx="4" ry="6" fill="#93c5fd" stroke="#1a1a1a" stroke-width="2"/>
+    <path d="M22,-26 L19,-20 L25,-20 Z" fill="#93c5fd" stroke="#1a1a1a" stroke-width="1.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Magnifying glass (the guard is also inspecting) -->
+  <g transform="translate(96,90)">
+    <circle cx="0" cy="0" r="9" fill="none" stroke="#1a1a1a" stroke-width="3"/>
+    <circle cx="0" cy="0" r="9" fill="#bfdbfe" opacity="0.6"/>
+    <line x1="6" y1="6" x2="14" y2="14" stroke="#1a1a1a" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- "SPEC" text - bold comic style -->
+  <text x="128" y="62"
+        font-family="'Arial Black', 'Impact', 'Haettenschweiler', sans-serif"
+        font-size="40" font-weight="900"
+        fill="#1a1a1a"
+        letter-spacing="-1"
+        filter="url(#shadow)">SPEC</text>
+
+  <!-- "GUARD" text - red/different color -->
+  <text x="238" y="62"
+        font-family="'Arial Black', 'Impact', 'Haettenschweiler', sans-serif"
+        font-size="40" font-weight="900"
+        fill="#ef4444"
+        letter-spacing="-1"
+        filter="url(#shadow)">GUARD</text>
+
+  <!-- Squiggly underline -->
+  <path d="M128,70 Q148,76 168,70 Q188,64 208,70 Q228,76 248,70 Q268,64 288,70 Q308,76 328,70 Q348,64 368,70"
+        fill="none" stroke="#fbbf24" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Tagline in comic speech style -->
+  <rect x="128" y="82" width="330" height="28" rx="4" fill="none"/>
+  <text x="128" y="100"
+        font-family="'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive"
+        font-size="13.5" fill="#374151" letter-spacing="0.3">
+    Semantic governance · your spec, your rules 🛡️
+  </text>
+
+  <!-- Small "ZAP!" comic effect -->
+  <g transform="translate(448, 22) rotate(15)">
+    <polygon points="0,-14 4,-4 14,-4 6,2 10,14 0,7 -10,14 -6,2 -14,-4 -4,-4"
+             fill="#fde047" stroke="#1a1a1a" stroke-width="2" stroke-linejoin="round"/>
+    <text x="0" y="4" text-anchor="middle"
+          font-family="'Arial Black', Impact, sans-serif"
+          font-size="5.5" font-weight="900" fill="#1a1a1a">ZAP</text>
+  </g>
+</svg>
