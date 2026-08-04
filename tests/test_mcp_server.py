@@ -41,6 +41,77 @@ def configured_repo_with_roles(git_repo):
     return git_repo
 
 
+@pytest.fixture
+def monorepo(git_repo):
+    """Two packages with their own locks (api also has roles); no repo-root
+    lock. The repo-root config watches the package READMEs (watch is
+    repo-root-only)."""
+    git_repo.write(
+        "packages/api/.specguard/lock.json",
+        json.dumps({"goal": "the orders API", "scope_in": ["orders"], "scope_out": ["billing"]}),
+    )
+    git_repo.write(
+        "packages/api/.specguard/roles.yml",
+        "roles:\n  architect: [alice]\n"
+        "rules:\n  README.md:\n    scope_changes: {approve: architect}\n",
+    )
+    git_repo.write("packages/api/README.md", "v1\n")
+    git_repo.write(
+        "packages/web/.specguard/lock.json",
+        json.dumps(
+            {"goal": "the marketing site", "scope_in": ["pages"], "scope_out": ["accounts"]}
+        ),
+    )
+    git_repo.write("packages/web/README.md", "v1\n")
+    git_repo.write(".specguard/config.yml", 'watch:\n  - "packages/**/README.md"\n')
+    git_repo.commit_all("base")
+    return git_repo
+
+
+class TestMonorepoScope:
+    """The path-oriented MCP tools must judge a change against its package's own
+    scope, not the repo root (007 US2 / constitution III)."""
+
+    def test_proposed_change_judged_against_package_scope(self, monorepo):
+        adapter = FakeAdapter(
+            responses={
+                "README.md": make_classification(
+                    "SCOPE_CHANGE", 0.9, "HIGH", ["billing"], "adds billing"
+                )
+            }
+        )
+        result = mcp_server.check_proposed_change(
+            "packages/api/README.md",
+            "v1\nNow also does billing.\n",
+            repo_root=monorepo.root,
+            adapter=adapter,
+        )
+        assert result["classified"] is True
+        assert result["scope"] == "packages/api"        # not the repo root
+        assert result["governance_source"] == "explicit-lock"
+
+    def test_get_scope_lock_for_path_returns_package_lock(self, monorepo):
+        result = mcp_server.get_scope_lock(
+            repo_root=monorepo.root, path="packages/web/README.md"
+        )
+        assert result["scope"] == "packages/web"
+        assert result["scope_lock"]["goal"] == "the marketing site"
+
+    def test_check_permission_uses_package_roles(self, monorepo):
+        # alice is the architect in packages/api → may approve its README scope change
+        api = mcp_server.check_permission(
+            "alice", "packages/api/README.md", "scope-change", repo_root=monorepo.root
+        )
+        assert api["roles_configured"] is True
+        assert api["allowed"] is True
+        # packages/web has no roles.yml → permissive (warn mode)
+        web = mcp_server.check_permission(
+            "bob", "packages/web/README.md", "scope-change", repo_root=monorepo.root
+        )
+        assert web["roles_configured"] is False
+        assert web["allowed"] is True
+
+
 class TestCheckPermission:
     def test_scope_change_allowed_for_role_member(self, configured_repo_with_roles):
         result = mcp_server.check_permission(
