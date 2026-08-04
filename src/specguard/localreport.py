@@ -35,25 +35,33 @@ def would_block(verdicts: list[Verdict]) -> bool:
     return any(v.outcome == "BLOCK" for v in verdicts)
 
 
+def _display_path(verdict: Verdict) -> str:
+    """The changed file's repo-relative path. In a monorepo the engine sees a
+    scope-relative path (the scope prefix is stripped before classification), so
+    re-attach the scope directory for an unambiguous, clickable path."""
+    return f"{verdict.scope}/{verdict.file}" if verdict.scope else verdict.file
+
+
 def _verdict_lines(verdict: Verdict) -> list[str]:
     c = verdict.classification
+    path = _display_path(verdict)
     if verdict.reason == "additive":
         assert c is not None
-        return [f"✅ {verdict.file} — ADDITIVE ({c.confidence:.0%}): {c.summary}"]
+        return [f"✅ {path} — ADDITIVE ({c.confidence:.0%}): {c.summary}"]
     if verdict.reason == "classifier_error":
-        return [f"⚠️  {verdict.file} — {COULD_NOT_CLASSIFY}"]
+        return [f"⚠️  {path} — {COULD_NOT_CLASSIFY}"]
     if verdict.reason == "protected_violation":
         return [
-            f"❌ {verdict.file} — protected path",
+            f"❌ {path} — protected path",
             "   the merge gate hard-blocks edits to this path unless the PR "
             "author's GitHub login is in the authorized role",
         ]
     if verdict.reason == "region_ungoverned":
-        return [f"✅ {verdict.file} — outside the locked region(s); not classified"]
+        return [f"✅ {path} — outside the locked region(s); not classified"]
     assert c is not None
     icon = "❌" if verdict.outcome == "BLOCK" else "⚠️ "
     lines = [
-        f"{icon} {verdict.file} — SCOPE CHANGE ({c.confidence:.0%}): {c.summary}"
+        f"{icon} {path} — SCOPE CHANGE ({c.confidence:.0%}): {c.summary}"
     ]
     if c.out_of_scope_topics:
         lines.append(f"   out-of-scope: [{', '.join(c.out_of_scope_topics)}]")
@@ -65,14 +73,29 @@ def _verdict_lines(verdict: Verdict) -> list[str]:
     return lines
 
 
+def _source_lines(sources: dict[str, GovernanceSource]) -> list[str]:
+    """One 'Governance source:' line for a single scope, or a labeled list when a
+    monorepo PR spans several scopes (007 US2)."""
+    if len(sources) <= 1:
+        default: GovernanceSource = "plain"
+        source = next(iter(sources.values()), default)
+        return [f"Governance source: {SOURCE_LABEL[source]}"]
+    lines = ["Governance sources:"]
+    for scope_dir, source in sorted(sources.items()):
+        lines.append(f"  {scope_dir or '(repo root)'}: {SOURCE_LABEL[source]}")
+    return lines
+
+
 def render(
-    verdicts: list[Verdict], snapshot: CheckSnapshot, source: GovernanceSource = "plain"
+    verdicts: list[Verdict],
+    snapshot: CheckSnapshot,
+    sources: dict[str, GovernanceSource] | None = None,
 ) -> str:
     header = (
         f"specguard check — baseline {snapshot.base_ref} ({snapshot.base_sha}) "
         f"vs {snapshot.head_desc}"
     )
-    lines = [header, f"Governance source: {SOURCE_LABEL[source]}", ""]
+    lines = [header, *_source_lines(sources or {}), ""]
     if not verdicts:
         lines.append("no watched spec files changed in this snapshot")
     for verdict in verdicts:
@@ -82,13 +105,19 @@ def render(
 
 
 def render_json(
-    verdicts: list[Verdict], snapshot: CheckSnapshot, source: GovernanceSource = "plain"
+    verdicts: list[Verdict],
+    snapshot: CheckSnapshot,
+    sources: dict[str, GovernanceSource] | None = None,
 ) -> str:
+    sources = sources or {}
     return json.dumps(
         {
             "baseline": f"{snapshot.base_ref} ({snapshot.base_sha})",
             "compared_to": snapshot.head_desc,
-            "governance_source": source,
+            # Back-compat: the single (or repo-root) source stays under the
+            # original key; the full per-scope map is added alongside it.
+            "governance_source": sources.get("", next(iter(sources.values()), "plain")),
+            "governance_sources": sources,
             "advisory": True,
             "notice": ADVISORY_NOTICE,
             "would_block": would_block(verdicts),

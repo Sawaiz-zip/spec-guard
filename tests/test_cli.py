@@ -188,6 +188,41 @@ class TestCheck:
         cli.main(["check"], adapter=adapter)
         assert adapter.call_count == 1  # inside the governed region → classified
 
+    def _monorepo(self, git_repo, monkeypatch):
+        """Two packages, each with its OWN lock and no repo-root lock; the
+        repo-root config watches the package READMEs (watch is repo-root-only)."""
+        for pkg, out in (("api", "billing"), ("web", "user accounts")):
+            git_repo.write(
+                f"packages/{pkg}/.specguard/lock.json",
+                json.dumps(
+                    {"goal": f"the {pkg} service", "scope_in": ["core"], "scope_out": [out]}
+                ),
+            )
+            git_repo.write(f"packages/{pkg}/README.md", "v1\n")
+        git_repo.write(".specguard/config.yml", 'watch:\n  - "packages/**/README.md"\n')
+        git_repo.commit_all("base")
+        monkeypatch.chdir(git_repo.root)
+        return git_repo
+
+    def test_monorepo_evaluates_each_scope_independently(
+        self, git_repo, monkeypatch, capsys
+    ):
+        """`specguard check` resolves per-package scopes like the merge gate, and
+        no longer bails with 'run specguard init' when only sub-package locks
+        exist (007 US2 / constitution III). Regression: the local path used only
+        the repo-root lock and never saw sub-scopes."""
+        repo = self._monorepo(git_repo, monkeypatch)
+        repo.write("packages/api/README.md", "v1 plus billing\n")
+        repo.write("packages/web/README.md", "v1 plus a landing page\n")
+        adapter = FakeAdapter()  # default: additive
+        code = cli.main(["check"], adapter=adapter)
+        out = capsys.readouterr().out
+        assert code == 0
+        assert "specguard init" not in out          # did NOT falsely bail
+        assert adapter.call_count == 2              # both package scopes classified
+        assert "packages/api/README.md" in out      # full scoped paths attributed
+        assert "packages/web/README.md" in out
+
     def test_unconfigured_repo_setup_hint(self, git_repo, monkeypatch, capsys):
         git_repo.write("README.md", "v1\n")
         git_repo.commit_all("base")

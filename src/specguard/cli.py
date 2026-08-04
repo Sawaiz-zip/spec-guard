@@ -43,6 +43,7 @@ from specguard.localcheck import (
 )
 from specguard.models import Approval, PRContext, Verdict
 from specguard.providers import make_adapter, required_env_var
+from specguard.scopes import rescope_changed_file, resolve_scopes
 
 SETUP_HINT = (
     "this repository has no .specguard/lock.json at the baseline — run "
@@ -253,45 +254,54 @@ def _run_check(
 ) -> int:
     require_repo_with_head(repo_root)
     base_ref = args.base or "HEAD"
-    governance = load_baseline_governance(repo_root, base_ref)
-    if governance.lock is None:
-        if not args.hook:
-            print(f"specguard: {SETUP_HINT}")
-        return 0
+    # The repo-root config drives the watch list (repo-root-only, exactly like
+    # ci.py); per-scope lock/config/roles/regions come from resolve_scopes below.
+    root = load_baseline_governance(repo_root, base_ref)
 
     snapshot = resolve_snapshot(
         repo_root,
         staged=args.staged or args.hook,
         base=args.base,
         head=args.head,
-        watch=governance.config.watch,
-    )
-
-    # Re-derive against the actual changed paths so Spec Kit/OpenSpec feature scope
-    # matches what CI sees — same base_ref + changed_paths ⇒ same lock (FR-005).
-    governance = load_baseline_governance(
-        repo_root, base_ref, [c.path for c in snapshot.changes]
+        watch=root.config.watch,
     )
 
     if not snapshot.changes:
-        if args.hook:
-            return 0  # silent: zero friction on non-spec commits
-        _emit(args, [], snapshot, governance.source)
+        # No changes to evaluate. Distinguish an unconfigured repo (nudge to
+        # init) from a configured one with nothing watched — using the repo-root
+        # lock, since without changes there are no scopes to resolve.
+        if root.lock is None:
+            if not args.hook:
+                print(f"specguard: {SETUP_HINT}")
+            return 0
+        if not args.hook:
+            _emit(args, [], snapshot, {"": root.source})
+        return 0
+
+    # Group changed files by nearest-ancestor explicit-lock scope (007 US2), the
+    # same resolution the merge gate uses — so `specguard check` mirrors CI in a
+    # monorepo instead of only ever seeing the repo-root scope (constitution III).
+    scopes = resolve_scopes(repo_root, snapshot.base_ref, snapshot.changes)
+    if not scopes:
+        if not args.hook:
+            print(f"specguard: {SETUP_HINT}")
         return 0
 
     if adapter is None:
-        env_var = required_env_var(governance.config.provider)
-        if not os.environ.get(env_var):
+        for scope in scopes:
+            env_var = required_env_var(scope.config.provider)
+            if os.environ.get(env_var):
+                continue
+            where = f" in {scope.scope_dir}" if scope.scope_dir else ""
             hint = (
                 f"{env_var} is not set — export it to classify with the "
-                f"'{governance.config.provider}' provider"
+                f"'{scope.config.provider}' provider{where}"
             )
             if args.hook:
                 print(f"specguard: {hint} — {localreport.COULD_NOT_CLASSIFY}")
                 return 0
             print(f"specguard: error: {hint}", file=sys.stderr)
             return 2
-        adapter = make_adapter(governance.config)
 
     pr = PRContext(
         pr_number=0,
@@ -305,25 +315,34 @@ def _run_check(
     def no_approvals() -> list[Approval]:
         return []
 
-    def evaluate() -> list[Verdict]:
-        assert governance.lock is not None
-        return evaluate_pr(
-            snapshot.changes,
-            governance.lock,
-            governance.config,
-            governance.roles,
-            pr,
-            adapter,
-            no_approvals,
-            regions_config=governance.regions,
-        )
+    def evaluate() -> tuple[list[Verdict], dict[str, GovernanceSource]]:
+        all_verdicts: list[Verdict] = []
+        sources: dict[str, GovernanceSource] = {}
+        for scope in scopes:
+            sources[scope.scope_dir] = scope.source
+            rescoped = [rescope_changed_file(c, scope.scope_dir) for c in scope.changed]
+            scope_adapter = adapter if adapter is not None else make_adapter(scope.config)
+            all_verdicts.extend(
+                evaluate_pr(
+                    rescoped,
+                    scope.lock,
+                    scope.config,
+                    scope.roles,
+                    pr,
+                    scope_adapter,
+                    no_approvals,
+                    regions_config=scope.regions,
+                    scope=scope.scope_dir,
+                )
+            )
+        return all_verdicts, sources
 
     if args.hook:
         timeout = float(os.environ.get("SPECGUARD_HOOK_TIMEOUT", DEFAULT_HOOK_TIMEOUT))
         with ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(evaluate)
             try:
-                verdicts = future.result(timeout=timeout)
+                verdicts, sources = future.result(timeout=timeout)
             except FutureTimeoutError:
                 print(
                     f"specguard: classifier timed out after {timeout:.0f}s — "
@@ -331,11 +350,11 @@ def _run_check(
                 )
                 future.cancel()
                 return 0
-        _emit(args, verdicts, snapshot, governance.source)
+        _emit(args, verdicts, snapshot, sources)
         return 0  # the hook NEVER blocks (FR-006)
 
-    verdicts = evaluate()
-    _emit(args, verdicts, snapshot, governance.source)
+    verdicts, sources = evaluate()
+    _emit(args, verdicts, snapshot, sources)
     return 1 if localreport.would_block(verdicts) else 0
 
 
@@ -343,12 +362,12 @@ def _emit(
     args: argparse.Namespace,
     verdicts: list[Verdict],
     snapshot: CheckSnapshot,
-    source: GovernanceSource,
+    sources: dict[str, GovernanceSource],
 ) -> None:
     if getattr(args, "json", False):
-        print(localreport.render_json(verdicts, snapshot, source))
+        print(localreport.render_json(verdicts, snapshot, sources))
     else:
-        print(localreport.render(verdicts, snapshot, source))
+        print(localreport.render(verdicts, snapshot, sources))
 
 
 # ---------------------------------------------------------------------------
