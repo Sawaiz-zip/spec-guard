@@ -114,3 +114,22 @@ class TestBaselineGovernance:
         git_repo.commit_all("base")
         with pytest.raises(ConfigError, match="invalid JSON"):
             load_baseline_governance(git_repo.root, "HEAD")
+
+    def test_loads_regions_from_baseline(self, git_repo):
+        """Section locking must reach the local surfaces too — a regions.yml at
+        the baseline is loaded so `specguard check` and the MCP server mirror the
+        merge gate (constitution III / FR-010), not just CI."""
+        repo = seeded(git_repo)
+        repo.write(
+            ".specguard/regions.yml",
+            'files:\n  "README.md":\n    - "Out of Scope"\n',
+        )
+        repo.commit_all("add regions")
+        governance = load_baseline_governance(repo.root, "HEAD")
+        assert governance.regions is not None
+        assert governance.regions.files == {"README.md": ["Out of Scope"]}
+
+    def test_regions_absent_gives_none(self, git_repo):
+        repo = seeded(git_repo)
+        governance = load_baseline_governance(repo.root, "HEAD")
+        assert governance.regions is None  # whole-file governance

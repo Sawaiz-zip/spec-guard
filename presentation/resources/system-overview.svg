@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 600" font-family="'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect x="1" y="1" width="1178" height="598" rx="16" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <!-- header -->
+  <text x="40" y="52" font-size="26" font-weight="700" fill="#0f172a">System overview</text>
+  <text x="40" y="80" font-size="15" fill="#64748b">One validator core — every surface differs only in how the verdict is delivered.</text>
+
+  <!-- ===================== SURFACES ===================== -->
+  <rect x="40" y="108" width="300" height="452" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="64" y="140" font-size="13" font-weight="700" letter-spacing="1.5" fill="#94a3b8">SURFACES</text>
+
+  <!-- surface node template: rounded rect + accent bar + title + sub + badge -->
+  <!-- 1 CI Action -->
+  <rect x="64" y="152" width="252" height="60" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="64" y="152" width="4" height="60" rx="2" fill="#7c3aed"/>
+  <text x="82" y="180" font-size="15" font-weight="600" fill="#0f172a">CI Action</text>
+  <text x="82" y="199" font-size="12.5" fill="#64748b">required merge gate</text>
+  <rect x="238" y="167" width="66" height="20" rx="10" fill="#ede9fe"/>
+  <text x="271" y="181" font-size="11" font-weight="600" fill="#6d28d9" text-anchor="middle">enforcing</text>
+
+  <!-- 2 GitHub App -->
+  <rect x="64" y="228" width="252" height="60" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="64" y="228" width="4" height="60" rx="2" fill="#7c3aed"/>
+  <text x="82" y="256" font-size="15" font-weight="600" fill="#0f172a">GitHub App</text>
+  <text x="82" y="275" font-size="12.5" fill="#64748b">fork PRs · native checks</text>
+  <rect x="238" y="243" width="66" height="20" rx="10" fill="#ede9fe"/>
+  <text x="271" y="257" font-size="11" font-weight="600" fill="#6d28d9" text-anchor="middle">enforcing</text>
+
+  <!-- 3 CLI -->
+  <rect x="64" y="304" width="252" height="60" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="64" y="304" width="4" height="60" rx="2" fill="#94a3b8"/>
+  <text x="82" y="332" font-size="15" font-weight="600" fill="#0f172a">CLI</text>
+  <text x="82" y="351" font-size="12.5" fill="#64748b">specguard check</text>
+  <rect x="244" y="319" width="60" height="20" rx="10" fill="#f1f5f9"/>
+  <text x="274" y="333" font-size="11" font-weight="600" fill="#64748b" text-anchor="middle">advisory</text>
+
+  <!-- 4 pre-commit -->
+  <rect x="64" y="380" width="252" height="60" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="64" y="380" width="4" height="60" rx="2" fill="#94a3b8"/>
+  <text x="82" y="408" font-size="15" font-weight="600" fill="#0f172a">Pre-commit hook</text>
+  <text x="82" y="427" font-size="12.5" fill="#64748b">commit-time warnings</text>
+  <rect x="244" y="395" width="60" height="20" rx="10" fill="#f1f5f9"/>
+  <text x="274" y="409" font-size="11" font-weight="600" fill="#64748b" text-anchor="middle">advisory</text>
+
+  <!-- 5 MCP -->
+  <rect x="64" y="456" width="252" height="60" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+  <rect x="64" y="456" width="4" height="60" rx="2" fill="#94a3b8"/>
+  <text x="82" y="484" font-size="15" font-weight="600" fill="#0f172a">MCP server</text>
+  <text x="82" y="503" font-size="12.5" fill="#64748b">agents · write-time</text>
+  <rect x="244" y="471" width="60" height="20" rx="10" fill="#f1f5f9"/>
+  <text x="274" y="485" font-size="11" font-weight="600" fill="#64748b" text-anchor="middle">advisory</text>
+
+  <!-- ===================== CORE ===================== -->
+  <rect x="452" y="108" width="336" height="452" rx="14" fill="#faf5ff" stroke="#e9d5ff"/>
+  <text x="476" y="140" font-size="13" font-weight="700" letter-spacing="1.5" fill="#a855f7">SHARED VALIDATOR CORE</text>
+
+  <rect x="476" y="160" width="288" height="104" rx="10" fill="#ffffff" stroke="#ddd6fe"/>
+  <text x="492" y="192" font-size="15.5" font-weight="700" fill="#5b21b6">Governance resolver</text>
+  <text x="492" y="214" font-size="12.5" fill="#6b7280">picks the locked goal &amp; scope by</text>
+  <text x="492" y="233" font-size="12.5" fill="#6b7280">precedence:</text>
+  <text x="492" y="252" font-size="12.5" font-weight="600" fill="#7c3aed">lock ▸ Spec Kit ▸ OpenSpec ▸ plain</text>
+
+  <rect x="476" y="284" width="288" height="88" rx="10" fill="#ffffff" stroke="#ddd6fe"/>
+  <text x="492" y="316" font-size="15.5" font-weight="700" fill="#5b21b6">Classifier seam</text>
+  <text x="492" y="338" font-size="12.5" fill="#6b7280">one output contract, many providers</text>
+  <text x="492" y="357" font-size="12.5" font-weight="600" fill="#7c3aed">Anthropic · OpenAI · Gemini · OpenRouter</text>
+
+  <rect x="476" y="392" width="288" height="88" rx="10" fill="#ffffff" stroke="#ddd6fe"/>
+  <text x="492" y="424" font-size="15.5" font-weight="700" fill="#5b21b6">Roles &amp; regions</text>
+  <text x="492" y="446" font-size="12.5" fill="#6b7280">deterministic authorization</text>
+  <text x="492" y="465" font-size="12.5" fill="#6b7280">and section-level locking</text>
+
+  <!-- ===================== VERDICT ===================== -->
+  <rect x="892" y="230" width="256" height="208" rx="14" fill="#f0f9ff" stroke="#bae6fd"/>
+  <text x="1020" y="268" font-size="18" font-weight="700" fill="#0369a1" text-anchor="middle">Verdict</text>
+  <line x1="916" y1="284" x2="1124" y2="284" stroke="#bae6fd"/>
+  <text x="1020" y="314" font-size="13.5" font-weight="700" fill="#15803d" text-anchor="middle">ADDITIVE</text>
+  <text x="1020" y="342" font-size="13.5" font-weight="700" fill="#b45309" text-anchor="middle">SCOPE_CHANGE</text>
+  <text x="1020" y="370" font-size="13.5" font-weight="700" fill="#b91c1c" text-anchor="middle">PROTECTED_VIOLATION</text>
+  <text x="1020" y="404" font-size="12" fill="#64748b" text-anchor="middle">+ confidence</text>
+  <text x="1020" y="422" font-size="12" fill="#64748b" text-anchor="middle">+ required approver role</text>
+
+  <!-- ===================== CONNECTORS ===================== -->
+  <!-- surfaces converge into core -->
+  <path d="M316,182 C 380,182 400,320 450,320" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>
+  <path d="M316,258 C 380,258 405,322 450,322" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>
+  <path d="M316,334 L 450,334" fill="none" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <path d="M316,410 C 380,410 405,346 450,346" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>
+  <path d="M316,486 C 380,486 400,348 450,348" fill="none" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="384" y="300" font-size="12" font-style="italic" fill="#94a3b8" text-anchor="middle">all call →</text>
+
+  <!-- core to verdict -->
+  <path d="M788,334 L 890,334" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="839" y="324" font-size="12" font-style="italic" fill="#94a3b8" text-anchor="middle">produces</text>
+</svg>

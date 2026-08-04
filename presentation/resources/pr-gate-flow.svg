@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 986" font-family="'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect x="1" y="1" width="938" height="984" rx="16" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <!-- header -->
+  <text x="40" y="52" font-size="26" font-weight="700" fill="#0f172a">PR gate — decision flow</text>
+  <text x="40" y="80" font-size="14.5" fill="#64748b">Hard blocks are deterministic (no AI); only a watched-file scope change reaches the classifier.</text>
+
+  <!-- legend -->
+  <g font-size="12" fill="#475569">
+    <rect x="600" y="34" width="12" height="12" rx="3" fill="#22c55e"/><text x="618" y="44">Pass</text>
+    <rect x="668" y="34" width="12" height="12" rx="3" fill="#f59e0b"/><text x="686" y="44">Warn</text>
+    <rect x="740" y="34" width="12" height="12" rx="3" fill="#ef4444"/><text x="758" y="44">Block</text>
+    <rect x="812" y="34" width="12" height="12" rx="3" fill="#94a3b8"/><text x="830" y="44">Decision</text>
+  </g>
+
+  <g transform="translate(0,56)">
+  <!-- ============ connectors (drawn first, under nodes) ============ -->
+  <g stroke="#94a3b8" stroke-width="2" fill="none">
+    <path d="M290,80 L290,121" marker-end="url(#ah)"/>
+    <path d="M290,179 L290,239" marker-end="url(#ah)"/>
+    <path d="M290,305 L290,362" marker-end="url(#ah)"/>
+    <path d="M290,426 L290,472" marker-end="url(#ah)"/>
+    <path d="M290,528 L290,595" marker-end="url(#ah)"/>
+    <path d="M290,653 L290,719" marker-end="url(#ah)"/>
+    <path d="M290,777 L290,829" marker-end="url(#ah)"/>
+    <!-- horizontal branches to right terminals -->
+    <path d="M440,150 L530,150" marker-end="url(#ah)"/>
+    <path d="M440,272 L530,272" marker-end="url(#ah)"/>
+    <path d="M440,500 L530,500" marker-end="url(#ah)"/>
+    <path d="M440,624 L530,624" marker-end="url(#ah)"/>
+    <path d="M440,748 L530,748" marker-end="url(#ah)"/>
+  </g>
+  <!-- approved feedback loop (dotted, left margin) -->
+  <path d="M140,858 C 66,858 66,748 132,748" fill="none" stroke="#16a34a" stroke-width="2" stroke-dasharray="2 5" marker-end="url(#ah)"/>
+
+  <!-- ============ edge labels ============ -->
+  <g font-size="11.5" font-weight="600" text-anchor="middle">
+    <g><rect x="470" y="139" width="30" height="20" rx="10" fill="#f1f5f9"/><text x="485" y="153" fill="#475569">No</text></g>
+    <g><rect x="468" y="261" width="34" height="20" rx="10" fill="#f1f5f9"/><text x="485" y="275" fill="#475569">Yes</text></g>
+    <g><rect x="443" y="489" width="84" height="20" rx="10" fill="#dcfce7"/><text x="485" y="503" fill="#15803d">ADDITIVE</text></g>
+    <g><rect x="468" y="613" width="34" height="20" rx="10" fill="#f1f5f9"/><text x="485" y="627" fill="#475569">No</text></g>
+    <g><rect x="468" y="737" width="34" height="20" rx="10" fill="#f1f5f9"/><text x="485" y="751" fill="#475569">Yes</text></g>
+    <g><rect x="300" y="552" width="118" height="20" rx="10" fill="#fee2e2"/><text x="359" y="566" fill="#b91c1c">SCOPE_CHANGE</text></g>
+    <g><rect x="300" y="676" width="36" height="20" rx="10" fill="#f1f5f9"/><text x="318" y="690" fill="#475569">Yes</text></g>
+    <g><rect x="300" y="796" width="30" height="20" rx="10" fill="#f1f5f9"/><text x="315" y="810" fill="#475569">No</text></g>
+    <g><rect x="40" y="793" width="150" height="20" rx="10" fill="#f0fdf4"/><text x="115" y="807" fill="#15803d">approved · re-runs gate</text></g>
+  </g>
+
+  <!-- ============ spine nodes ============ -->
+  <!-- start -->
+  <rect x="140" y="32" width="300" height="48" rx="24" fill="#0f172a"/>
+  <text x="290" y="61" font-size="15" font-weight="600" fill="#ffffff" text-anchor="middle">Pull request opened or updated</text>
+
+  <!-- D1 -->
+  <rect x="140" y="121" width="300" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="140" y="121" width="4" height="58" rx="2" fill="#94a3b8"/>
+  <text x="296" y="156" font-size="15" font-weight="600" fill="#0f172a" text-anchor="middle">Watched file changed?</text>
+
+  <!-- D2 -->
+  <rect x="140" y="239" width="300" height="66" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="140" y="239" width="4" height="66" rx="2" fill="#94a3b8"/>
+  <text x="296" y="266" font-size="15" font-weight="600" fill="#0f172a" text-anchor="middle">Protected path edited</text>
+  <text x="296" y="287" font-size="15" font-weight="600" fill="#0f172a" text-anchor="middle">by an unauthorized author?</text>
+
+  <!-- P1 classifier -->
+  <rect x="130" y="362" width="320" height="64" rx="10" fill="#faf5ff" stroke="#ddd6fe" stroke-width="1.5"/>
+  <rect x="130" y="362" width="4" height="64" rx="2" fill="#7c3aed"/>
+  <text x="290" y="389" font-size="15" font-weight="700" fill="#5b21b6" text-anchor="middle">Classifier evaluates the diff</text>
+  <text x="290" y="410" font-size="14" fill="#6b7280" text-anchor="middle">against the locked goal &amp; scope</text>
+
+  <!-- D3 -->
+  <rect x="140" y="472" width="300" height="56" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="140" y="472" width="4" height="56" rx="2" fill="#94a3b8"/>
+  <text x="296" y="506" font-size="15" font-weight="600" fill="#0f172a" text-anchor="middle">Classification?</text>
+
+  <!-- D3b confidence -->
+  <rect x="140" y="595" width="300" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="140" y="595" width="4" height="58" rx="2" fill="#94a3b8"/>
+  <text x="296" y="622" font-size="15" font-weight="600" fill="#0f172a" text-anchor="middle">Confidence ≥ block_threshold</text>
+  <text x="296" y="641" font-size="12.5" fill="#64748b" text-anchor="middle">(default 0.75)?</text>
+
+  <!-- D4 approval -->
+  <rect x="140" y="719" width="300" height="58" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+  <rect x="140" y="719" width="4" height="58" rx="2" fill="#94a3b8"/>
+  <text x="296" y="753" font-size="15" font-weight="600" fill="#0f172a" text-anchor="middle">Authorized approval on record?</text>
+
+  <!-- Block_B -->
+  <rect x="140" y="829" width="300" height="58" rx="10" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+  <rect x="140" y="829" width="4" height="58" rx="2" fill="#ef4444"/>
+  <text x="296" y="856" font-size="15" font-weight="700" fill="#b91c1c" text-anchor="middle">Block</text>
+  <text x="296" y="876" font-size="12.5" fill="#7f1d1d" text-anchor="middle">until an authorized approval</text>
+
+  <!-- ============ right terminals ============ -->
+  <!-- Pass_A -->
+  <rect x="530" y="125" width="300" height="50" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <rect x="530" y="125" width="4" height="50" rx="2" fill="#22c55e"/>
+  <text x="548" y="147" font-size="14.5" font-weight="700" fill="#15803d">Pass</text>
+  <text x="548" y="165" font-size="12.5" fill="#4b5563">not a watched file — no classify</text>
+
+  <!-- Block_A -->
+  <rect x="530" y="241" width="300" height="62" rx="10" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5"/>
+  <rect x="530" y="241" width="4" height="62" rx="2" fill="#ef4444"/>
+  <text x="548" y="268" font-size="14.5" font-weight="700" fill="#b91c1c">Block · PROTECTED_VIOLATION</text>
+  <text x="548" y="288" font-size="12.5" fill="#7f1d1d">deterministic — no AI, no false positives</text>
+
+  <!-- Pass_B -->
+  <rect x="530" y="475" width="300" height="50" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <rect x="530" y="475" width="4" height="50" rx="2" fill="#22c55e"/>
+  <text x="548" y="497" font-size="14.5" font-weight="700" fill="#15803d">Pass · silent</text>
+  <text x="548" y="515" font-size="12.5" fill="#4b5563">additive, in-scope change</text>
+
+  <!-- Warn -->
+  <rect x="530" y="593" width="300" height="62" rx="10" fill="#fffbeb" stroke="#fde68a" stroke-width="1.5"/>
+  <rect x="530" y="593" width="4" height="62" rx="2" fill="#f59e0b"/>
+  <text x="548" y="620" font-size="14.5" font-weight="700" fill="#b45309">Warn · not blocking</text>
+  <text x="548" y="640" font-size="12.5" fill="#78350f">low-confidence scope change</text>
+
+  <!-- Pass_C -->
+  <rect x="530" y="723" width="300" height="50" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5"/>
+  <rect x="530" y="723" width="4" height="50" rx="2" fill="#22c55e"/>
+  <text x="548" y="745" font-size="14.5" font-weight="700" fill="#15803d">Pass · merge unblocked</text>
+  <text x="548" y="763" font-size="12.5" fill="#4b5563">an authorized approval is on record</text>
+  </g>
+</svg>

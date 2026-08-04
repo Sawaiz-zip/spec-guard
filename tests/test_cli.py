@@ -151,6 +151,43 @@ class TestCheck:
         assert "no watched spec files changed" in out
         assert adapter.call_count == 0
 
+    def _regions_repo(self, git_repo, monkeypatch):
+        """A repo whose regions.yml governs only README's 'Locked' section."""
+        git_repo.write("README.md", "# Title\n\n## Free\nold\n\n## Locked\nkeep\n")
+        git_repo.write(".specguard/lock.json", LOCK)
+        git_repo.write(
+            ".specguard/regions.yml",
+            'files:\n  "README.md":\n    - "Locked"\n',
+        )
+        git_repo.commit_all("base")
+        monkeypatch.chdir(git_repo.root)
+        return git_repo
+
+    def test_regions_skip_classification_outside_governed_section(
+        self, git_repo, monkeypatch
+    ):
+        """A change OUTSIDE every governed region passes locally without ever
+        reaching the classifier — the local surface must honor regions.yml just
+        like the merge gate (constitution III / FR-010). Regression: the local
+        path previously dropped regions_config and classified the whole file."""
+        repo = self._regions_repo(git_repo, monkeypatch)
+        repo.write("README.md", "# Title\n\n## Free\nnew pricing SaaS\n\n## Locked\nkeep\n")
+        adapter = scope_change_adapter()
+        code = cli.main(["check"], adapter=adapter)
+        assert code == 0
+        assert adapter.call_count == 0  # outside every region → never classified
+
+    def test_regions_still_govern_changes_inside_the_section(
+        self, git_repo, monkeypatch
+    ):
+        """The mirror of the above: a change INSIDE a governed region is still
+        classified, so section locking narrows governance without disabling it."""
+        repo = self._regions_repo(git_repo, monkeypatch)
+        repo.write("README.md", "# Title\n\n## Free\nold\n\n## Locked\nnow SaaS pricing\n")
+        adapter = scope_change_adapter()
+        cli.main(["check"], adapter=adapter)
+        assert adapter.call_count == 1  # inside the governed region → classified
+
     def test_unconfigured_repo_setup_hint(self, git_repo, monkeypatch, capsys):
         git_repo.write("README.md", "v1\n")
         git_repo.commit_all("base")
