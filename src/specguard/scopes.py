@@ -79,6 +79,52 @@ def rescope_changed_file(changed: ChangedFile, scope_dir: str) -> ChangedFile:
     return dataclasses.replace(changed, path=changed.path[len(prefix) :])
 
 
+def _load_scope(
+    repo_root: Path, base_ref: str, scope_dir: str, changed_paths: list[str]
+) -> Scope | None:
+    """Load one scope's full governance (lock/config/roles/regions) at `base_ref`.
+
+    `changed_paths` drives Spec Kit/OpenSpec derivation for the repo-root scope
+    only. Returns None when the scope has no lock (unconfigured). A malformed
+    lock raises ConfigError (propagated) — loud, never silently skipped.
+    """
+    lock: ScopeLock | None
+    if scope_dir:
+        lock_path = f"{scope_dir}/{LOCK_PATH}"
+        lock = parse_lock(
+            show_file(repo_root, base_ref, lock_path) or "", f"{base_ref}:{lock_path}"
+        )
+        source: GovernanceSource = "explicit-lock"
+    else:
+        lock, source = resolve_lock(repo_root, base_ref, changed_paths)
+    if lock is None:
+        return None
+
+    config = parse_config(
+        show_file(repo_root, base_ref, _scoped(scope_dir, CONFIG_PATH)),
+        f"{base_ref}:{_scoped(scope_dir, CONFIG_PATH)}",
+    )
+    roles = parse_roles(
+        show_file(repo_root, base_ref, _scoped(scope_dir, ROLES_PATH)),
+        f"{base_ref}:{_scoped(scope_dir, ROLES_PATH)}",
+    )
+    regions = parse_regions(
+        show_file(repo_root, base_ref, _scoped(scope_dir, REGIONS_PATH)),
+        f"{base_ref}:{_scoped(scope_dir, REGIONS_PATH)}",
+    )
+    return Scope(scope_dir, lock, config, roles, regions, source, [])
+
+
+def resolve_scope_for_path(
+    repo_root: Path, base_ref: str, path: str
+) -> Scope | None:
+    """The single governing scope for one path — nearest-ancestor explicit lock,
+    else the repo-root overlay. Lets the path-oriented MCP tools judge a change
+    against its package's own lock instead of only the repo root (007 US2)."""
+    scope_dir = _nearest_explicit_scope(repo_root, base_ref, path)
+    return _load_scope(repo_root, base_ref, scope_dir, [path])
+
+
 def resolve_scopes(
     repo_root: Path, base_ref: str, changed: list[ChangedFile]
 ) -> list[Scope]:
@@ -96,31 +142,10 @@ def resolve_scopes(
 
     scopes: list[Scope] = []
     for scope_dir, scope_changed in grouped.items():
-        lock: ScopeLock | None
-        if scope_dir:
-            lock_path = f"{scope_dir}/{LOCK_PATH}"
-            lock = parse_lock(
-                show_file(repo_root, base_ref, lock_path) or "", f"{base_ref}:{lock_path}"
-            )
-            source: GovernanceSource = "explicit-lock"
-        else:
-            lock, source = resolve_lock(
-                repo_root, base_ref, [c.path for c in scope_changed]
-            )
-        if lock is None:
+        scope = _load_scope(
+            repo_root, base_ref, scope_dir, [c.path for c in scope_changed]
+        )
+        if scope is None:
             continue  # unconfigured repo-root scope — caller emits the setup hint
-
-        config = parse_config(
-            show_file(repo_root, base_ref, _scoped(scope_dir, CONFIG_PATH)),
-            f"{base_ref}:{_scoped(scope_dir, CONFIG_PATH)}",
-        )
-        roles = parse_roles(
-            show_file(repo_root, base_ref, _scoped(scope_dir, ROLES_PATH)),
-            f"{base_ref}:{_scoped(scope_dir, ROLES_PATH)}",
-        )
-        regions = parse_regions(
-            show_file(repo_root, base_ref, _scoped(scope_dir, REGIONS_PATH)),
-            f"{base_ref}:{_scoped(scope_dir, REGIONS_PATH)}",
-        )
-        scopes.append(Scope(scope_dir, lock, config, roles, regions, source, scope_changed))
+        scopes.append(dataclasses.replace(scope, changed=scope_changed))
     return scopes

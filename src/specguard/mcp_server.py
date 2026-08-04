@@ -19,6 +19,7 @@ from specguard.localcheck import load_baseline_governance, require_repo_with_hea
 from specguard.localreport import ADVISORY_NOTICE, COULD_NOT_CLASSIFY
 from specguard.models import Approval, PRContext, Verdict
 from specguard.providers import make_adapter, required_env_var
+from specguard.scopes import Scope, rescope_changed_file, resolve_scope_for_path
 
 SETUP_HINT = (
     "this repository has no .specguard/lock.json at the baseline — run "
@@ -36,6 +37,16 @@ def _base(
     return f"HEAD ({short_sha})", governance
 
 
+def _scope_base(repo_root: Path, path: str) -> tuple[str, Any, Scope | None]:
+    """Baseline + repo-root config (for the watch list, which is repo-root-only,
+    exactly like the merge gate) + the single scope that governs `path` (its
+    nearest-ancestor lock in a monorepo, else the repo-root overlay)."""
+    short_sha = require_repo_with_head(repo_root)
+    root_governance = load_baseline_governance(repo_root, "HEAD")
+    scope = resolve_scope_for_path(repo_root, "HEAD", path)
+    return f"HEAD ({short_sha})", root_governance, scope
+
+
 def _advisory(payload: dict[str, Any]) -> dict[str, Any]:
     payload["advisory"] = True
     payload["notice"] = ADVISORY_NOTICE
@@ -50,12 +61,15 @@ def check_proposed_change(
 ) -> dict[str, Any]:
     """Classify a change the agent is ABOUT to write — before any commit exists."""
     root = repo_root or Path.cwd()
-    baseline, governance = _base(root, [path])
+    baseline, root_governance, scope = _scope_base(root, path)
 
-    if governance.lock is None:
+    if scope is None:
         return _advisory({"configured": False, "hint": SETUP_HINT})
 
-    if not any(path_matches(path, pattern) for pattern in governance.config.watch):
+    # Watch is resolved from the repo-root config only (mirroring ci.py); the
+    # lock/config/roles/regions come from the scope that governs `path` so a
+    # proposed change in a monorepo package is judged against its own lock.
+    if not any(path_matches(path, pattern) for pattern in root_governance.config.watch):
         return _advisory(
             {
                 "configured": True,
@@ -66,10 +80,12 @@ def check_proposed_change(
         )
 
     old_content = show_file(root, "HEAD", path) or ""
-    changed = diff_from_contents(path, old_content, proposed_content)
+    changed = rescope_changed_file(
+        diff_from_contents(path, old_content, proposed_content), scope.scope_dir
+    )
 
     if adapter is None:
-        env_var = required_env_var(governance.config.provider)
+        env_var = required_env_var(scope.config.provider)
         if not os.environ.get(env_var):
             return _advisory(
                 {
@@ -80,7 +96,7 @@ def check_proposed_change(
                     "detail": f"{env_var} is not set — {COULD_NOT_CLASSIFY}",
                 }
             )
-        adapter = make_adapter(governance.config)
+        adapter = make_adapter(scope.config)
 
     from specguard.engine import evaluate_pr
 
@@ -97,8 +113,8 @@ def check_proposed_change(
         return []
 
     verdict = evaluate_pr(
-        [changed], governance.lock, governance.config, governance.roles,
-        pr, adapter, no_approvals, regions_config=governance.regions,
+        [changed], scope.lock, scope.config, scope.roles,
+        pr, adapter, no_approvals, regions_config=scope.regions, scope=scope.scope_dir,
     )[0]
 
     if verdict.reason == "classifier_error":
@@ -117,7 +133,8 @@ def check_proposed_change(
         "watched": True,
         "classified": True,
         "baseline": baseline,
-        "governance_source": governance.source,
+        "scope": scope.scope_dir,
+        "governance_source": scope.source,
         "verdict": _verdict_payload(verdict),
     }
     redirect = _redirect(path, verdict)
@@ -175,9 +192,9 @@ def check_permission(
             }
         )
     root = repo_root or Path.cwd()
-    _baseline, governance = _base(root)
+    _baseline, _root_gov, scope = _scope_base(root, path)
     base = {"identity": identity, "path": path, "change_class": change_class}
-    if governance.roles is None:
+    if scope is None or scope.roles is None:
         return _advisory(
             {
                 **base,
@@ -188,7 +205,11 @@ def check_permission(
         )
     from specguard.roles import change_permission as _change_permission
 
-    result = _change_permission(identity, path, change_class, governance.roles)  # type: ignore[arg-type]
+    # roles.yml patterns are scope-relative, so match against the rescoped path
+    # (the whole .specguard/ is copy-paste portable between packages).
+    prefix = f"{scope.scope_dir}/"
+    rel_path = path[len(prefix):] if scope.scope_dir and path.startswith(prefix) else path
+    result = _change_permission(identity, rel_path, change_class, scope.roles)  # type: ignore[arg-type]
     return _advisory(
         {
             **base,
@@ -200,9 +221,26 @@ def check_permission(
     )
 
 
-def get_scope_lock(repo_root: Path | None = None) -> dict[str, Any]:
-    """The locked frame — consult it BEFORE drafting (no classifier call)."""
+def get_scope_lock(
+    repo_root: Path | None = None, path: str | None = None
+) -> dict[str, Any]:
+    """The locked frame — consult it BEFORE drafting (no classifier call). Pass
+    `path` to get the lock that governs it in a monorepo (its package's own
+    lock); omit it for the repo-root scope."""
     root = repo_root or Path.cwd()
+    if path is not None:
+        baseline, _root_gov, scope = _scope_base(root, path)
+        if scope is None:
+            return _advisory({"configured": False, "hint": SETUP_HINT})
+        return _advisory(
+            {
+                "configured": True,
+                "baseline": baseline,
+                "scope": scope.scope_dir,
+                "governance_source": scope.source,
+                "scope_lock": scope.lock.model_dump(),
+            }
+        )
     baseline, governance = _base(root)
     if governance.lock is None:
         return _advisory({"configured": False, "hint": SETUP_HINT})
@@ -248,9 +286,10 @@ def run() -> None:
         return check_proposed_change(path, proposed_content)
 
     @server.tool()
-    def specguard_get_scope_lock() -> dict[str, Any]:
-        """Read the repository's locked goal and scope (no classifier call)."""
-        return get_scope_lock()
+    def specguard_get_scope_lock(path: str | None = None) -> dict[str, Any]:
+        """Read the locked goal and scope (no classifier call). Pass `path` to
+        get the lock governing it in a monorepo; omit for the repo root."""
+        return get_scope_lock(path=path)
 
     @server.tool()
     def specguard_list_watched_paths() -> dict[str, Any]:
