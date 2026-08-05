@@ -149,6 +149,12 @@ timestamp.
   history with correct identities and timestamps, and contains no secrets.
 - **SC-005**: All existing Phase 0–2 success criteria still pass unchanged (no regression in
   the whole-file / single-scope / additive paths).
+- **SC-006**: Section locking (SC-001) and monorepo multi-scope (SC-002) behave identically
+  on every surface that runs the shared validator core — the CI merge gate, the local
+  `specguard check`, and the MCP write-time tools — never CI-only (constitution III).
+  *(Recorded post-implementation: both features were initially wired into the CI gate only;
+  parity on the local-check and MCP surfaces was restored in 0.4.2–0.4.4. When adding a new
+  governance behavior, verify it reaches all three surfaces, not just `ci.py`.)*
 
 ## Assumptions
 
