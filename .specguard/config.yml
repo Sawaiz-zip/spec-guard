@@ -2,7 +2,6 @@
 watch:
   - "README.md"
   - "CLAUDE.md"
-  - "SPECGUARD_PRODUCT_SPEC.md"
   - "specs/**/*.md"
   - ".specguard/**"
 block_threshold: 0.75

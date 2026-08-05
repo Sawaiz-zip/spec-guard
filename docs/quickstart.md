@@ -69,8 +69,8 @@ Then run these scenarios in order:
 ## V5. Dogfood
 
 This repository guards its own spec files: `.github/workflows/specguard.yml`
-watches `README.md`, `SPECGUARD_PRODUCT_SPEC.md`, and `specs/**/*.md` against
-the scope locked in `.specguard/lock.json`.
+watches `README.md`, `CLAUDE.md`, and `specs/**/*.md` against the scope locked
+in `.specguard/lock.json`.
 
 ---
 
