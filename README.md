@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.svg" alt="SpecGuard" width="460" />
+<img src="assets/logo.svg" alt="SpecGuard" width="440" />
 
 <br/>
 <br/>
@@ -11,8 +11,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
 [![Built with Spec Kit](https://img.shields.io/badge/Built%20with-Spec%20Kit-fbbf24?style=flat-square&logoColor=black)](https://github.com/github/spec-kit)
 
-**A semantic governance gate for spec files.**
-It reads every PR change against your locked project goal and scope — passing additive edits silently, warning on low-confidence shifts, and blocking unapproved direction changes at merge time.
+**Your spec files are the source of truth. SpecGuard keeps them that way.**
+
+In spec-driven development the spec comes first and the code follows it, which makes your spec files the ones that actually steer the project. It also makes them the easiest place for the direction to change without anyone noticing. SpecGuard locks your project's goal and scope, then reads every pull request with a language model that compares the change to what you locked. When a change moves the goal, it tells you in plain words what shifted, who is asking for it, and who is allowed to sign off.
+
+Edits that stay inside the scope pass without a sound. A real direction change gets explained, and if you want, held at merge time until the right person approves.
 
 </div>
 
@@ -20,70 +23,93 @@ It reads every PR change against your locked project goal and scope — passing 
 
 ## Contents
 
-- [Why SpecGuard](#why-specguard)
+- [The problem](#the-problem)
 - [How it works](#how-it-works)
+- [Install](#install)
 - [Quick start](#quick-start)
-- [Configuration](#configuration)
-- [Features](#features)
-- [LLM providers](#llm-providers)
-- [Local tools](#local-tools)
+- [The three ways to run it](#the-three-ways-to-run-it)
+- [Setting up the merge gate](#setting-up-the-merge-gate)
+- [Configuration files](#configuration-files)
+- [Command reference](#command-reference)
 - [Approving a scope change](#approving-a-scope-change)
-- [Govern the specs you already have](#govern-the-specs-you-already-have)
+- [Choosing a provider](#choosing-a-provider)
 - [Advanced governance](#advanced-governance)
-- [Roadmap](#roadmap)
-- [Principles](#principles)
+- [Reuse the specs you already have](#reuse-the-specs-you-already-have)
+- [How this project was built](#how-this-project-was-built)
+- [Status](#status)
 
 ---
 
-## Why SpecGuard
+## The problem
 
-In repos where AI agents and humans both contribute, a PR can look fine on the surface while quietly shifting the project's direction. SpecGuard catches that — not by checking *who* made the change, but by understanding *what* the change means against your locked goal and scope.
+Most review tooling looks at who touched which files. That misses the change that tends to cause the most trouble in a repo where people and AI agents both contribute: the small, sensible looking edit that shifts the project's direction without anyone deciding to.
 
-```
-PR:         "refactored README for clarity"
-Change:      Added a full SaaS pricing section
-             to a project scoped as a local CLI tool.
+Say you maintain a local-first notes app. The spec is clear that notes live in plain files on the user's own machine, and that accounts and cloud sync are out of scope. One afternoon a pull request titled "improve the onboarding docs" adds a short section:
 
-SpecGuard:   ❌  SCOPE CHANGE — 94% confidence
-                 "SaaS pricing" is out of scope
-                 requires approval from @architect
+```diff
++ ## Syncing across devices
++ Sign in with your account and your notes stay in sync through our hosted service.
 ```
 
----
+The title is fair. The diff is four lines. But the project just grew a login system and a backend, and nobody chose that on purpose.
+
+SpecGuard is built for that case. It does not check who opened the pull request. It reads what the change means against the goal and scope you locked, and treats a direction change differently from a typo.
+
+<div align="center">
+<img src="docs/images/pr-gate-flow.svg" alt="How SpecGuard evaluates a pull request" width="760" />
+</div>
 
 ## How it works
 
-Lock your goal and scope once — in `.specguard/lock.json`, or [derived automatically](#govern-the-specs-you-already-have) from your Spec Kit / OpenSpec files. SpecGuard does the rest on every PR:
+You write the project's goal and scope down once. SpecGuard keeps its copy at the last trusted commit, so a pull request can never quietly edit the rules it is judged by. On every pull request it walks a short path:
 
+1. A file you do not govern changed. Nothing happens.
+2. A protected file changed and the author is not in the role allowed to touch it. Blocked, with no model involved. This one is a plain rule, so it cannot be a false positive.
+3. A governed spec file changed. A language model compares the diff to your locked scope and returns one of two answers with a confidence score:
+   - **Additive.** The change stays inside the scope. It passes quietly.
+   - **Scope change.** The change moves the goal or introduces something you marked out of scope. If the model is confident, the merge is held until an authorized approval exists. If it is unsure, you get a warning instead of a block.
+
+Two answers from the model, one deterministic rule, and a confidence line so a probabilistic decision never hides how sure it was. Merge time is the only place SpecGuard actually holds anything. Everything before it is there to warn you early, and it stays out of the way when a change is fine.
+
+## Install
+
+```bash
+pip install specguard-ci
 ```
-PR opened
- ├─ Not a watched file ───────────────────── ✅ Pass
- ├─ Protected path, wrong author ──────────── ❌ Block  (deterministic, no AI)
- └─ Watched spec file changed
-      └─ LLM classifies the diff
-           ├─ ADDITIVE ───────────────────── ✅ Pass   (silent)
-           ├─ SCOPE CHANGE, low confidence ── ⚠️  Warn
-           └─ SCOPE CHANGE, high confidence ── ❌ Block  (until authorized approval)
+
+That gives you the `specguard` command and the classifier engine. Provider backends and the agent server are optional extras:
+
+```bash
+pip install "specguard-ci[openai]"    # OpenAI or OpenRouter
+pip install "specguard-ci[gemini]"    # Google Gemini
+pip install "specguard-ci[mcp]"       # the MCP server for coding agents
 ```
 
-> [!NOTE]
-> Approving through GitHub's normal review flow re-evaluates the check automatically — no new commits needed. Merge time is the only enforcement layer; everything else is advisory.
-
----
+SpecGuard needs Python 3.10 or newer. The GitHub Action installs its own Python on the runner, so the gate itself works for a repo in any language.
 
 ## Quick start
 
-**1. Create `.specguard/lock.json`**
+The fastest path is the guided setup:
+
+```bash
+specguard init
+```
+
+It asks for your goal and scope, then offers to write the optional files (roles, the CI workflow, a pre-commit hook, section locking). Every file it writes is commented, so you can read what each setting does without leaving the file.
+
+If you would rather do it by hand, there are two steps.
+
+**1. Write `.specguard/lock.json`.**
 
 ```json
 {
-  "goal": "A CLI tool that converts Markdown to PDF",
-  "scope_in":  ["Markdown parsing", "PDF rendering", "CLI flags"],
-  "scope_out": ["GUI", "cloud sync", "collaboration features"]
+  "goal": "A local-first notes app that stores notes as plain Markdown files on the user's machine",
+  "scope_in": ["creating and editing notes", "full-text search", "tags and backlinks", "export to HTML or PDF"],
+  "scope_out": ["accounts or login", "syncing to a hosted server", "a mobile app", "usage tracking"]
 }
 ```
 
-**2. Add the workflow** — `.github/workflows/specguard.yml`
+**2. Add the workflow at `.github/workflows/specguard.yml`.**
 
 ```yaml
 name: specguard
@@ -97,109 +123,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }          # required: base...head history
-      - uses: Sawaiz-zip/spec-guard@v0     # https://github.com/marketplace/actions/specguard-ci
+        with: { fetch-depth: 0 }        # SpecGuard needs the base...head history
+      - uses: Sawaiz-zip/spec-guard@v0
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-**3. Add the secret and require the check**
+Add `ANTHROPIC_API_KEY` as a repository secret, then require the `specguard` check under **Settings, Branches, Branch protection**.
 
-Set `ANTHROPIC_API_KEY` as a repository secret, then require the **`specguard`** check under **Settings → Branches → Branch protection**.
+At this point scope changes will warn on every pull request. To make them block until an authorized teammate approves, add a [`roles.yml`](#rolesyml). That one file is the switch between advisory and enforcing.
 
-That's it for solo use — scope changes now warn on every PR. To make them **block** until an authorized teammate approves, add a [`roles.yml`](#3-rolesyml--who-may-approve-optional).
+## The three ways to run it
 
-> [!TIP]
-> Prefer one command? `specguard init` scaffolds all of this for you — lock file, workflow (including the `/specguard approve` command), optional roles/regions, and an optional pre-commit hook. Every generated file is **self-documenting**, so you can configure it without leaving the file.
+SpecGuard is one engine with three front doors. They all reach the same classifier and produce the same verdict. What differs is when they run and whether they can stop anything.
 
-<details>
-<summary><strong>What <code>specguard init</code> generates</strong></summary>
+<div align="center">
+<img src="docs/images/system-overview.svg" alt="The surfaces that share one validator core" width="760" />
+</div>
 
-`.specguard/lock.json` — your locked goal and scope:
+| Surface | When it runs | Can it block? | What it is for |
+|---|---|---|---|
+| **GitHub Action** | On every pull request | Yes, at merge time | The enforcing layer. This is the only place a change is actually held. |
+| **CLI** (`specguard`) | On your machine, on demand | No | Preview what the gate would say before you open the PR. Also the setup and approval commands. |
+| **MCP server** | Inside a coding agent | No | Let an agent check a change it is about to write, so drift never reaches a file. |
 
-```json
-{
-  "goal": "A CLI that converts Markdown to PDF",
-  "scope_in": ["Markdown parsing", "PDF rendering", "CLI flags"],
-  "scope_out": ["GUI", "cloud sync", "collaboration"]
-}
-```
+The two local surfaces are advisory on purpose. A pre-commit hook that blocks the commit is a hook people quietly delete, so the hook only warns. The rule is simple: warn early and often, enforce in exactly one place.
 
-`.specguard/config.yml` — behavior; every key is commented out (so the file is inert defaults) and explained inline:
+## Setting up the merge gate
 
-```yaml
-# SpecGuard settings — every key is optional. All keys are commented out below,
-# so this file changes nothing until you uncomment a key: the values shown ARE
-# the defaults. Each comment explains what the key does and its allowed values.
+The merge gate is the part that matters. Here is the full picture.
 
-# watch: which files the gate classifies. Anything not matched here is ignored.
-# watch:
-#   - "README.md"
-#   - "CLAUDE.md"
-#   - "AGENTS.md"
-#   - "ARCHITECTURE.md"
-#   - "*.kilo"
-#   - ".specguard/**"
-
-# block_threshold: confidence (0.0-1.0) a SCOPE_CHANGE needs to BLOCK. Below it,
-# the gate warns instead of blocking. Higher = fewer blocks, more warnings.
-# block_threshold: 0.75
-
-# on_error: what to do when the classifier/vendor call fails.
-#   warn (default) = pass the PR with a loud "could not classify" warning
-#   fail           = block the PR until classification succeeds
-# on_error: warn
-
-# provider: which LLM backend classifies. One of:
-#   anthropic (default) | openai | gemini | openrouter
-# Non-anthropic providers require an explicit `model:` below.
-# provider: anthropic
-
-# model: the model id to classify with. claude-sonnet-4-6 is the calibrated
-# default; claude-opus-4-8 is blocked by a project guardrail.
-# model: claude-sonnet-4-6
-
-# max_diff_chars: diffs larger than this (per file) are truncated before
-# classifying, to bound token cost. Must be > 0.
-# max_diff_chars: 30000
-```
-
-`.specguard/roles.yml` — who may approve (its presence flips warn → block); the rule vocabulary is documented inline:
-
-```yaml
-# rules: per file or glob, who may do what. Two rule keys are supported:
-#   edit: <role>                     only this role may edit the path
-#                                    (deterministic hard block, no AI)
-#   scope_changes: {approve: <role>} whose APPROVED review unblocks a
-#                                    SCOPE_CHANGE the classifier flags
-# Additive, in-scope changes always pass silently — there is no rule to
-# configure for them, and no such rule key exists.
-roles:
-  architect: [your-github-username]
-rules:
-  ".specguard/**":            # protect the lock/roles files themselves
-    edit: architect
-  "README.md":                # who may approve scope changes here
-    scope_changes: {approve: architect}
-```
-
-`.specguard/regions.yml` — optional section locking; ships inert (`files: {}`) with a worked example in the comments:
-
-```yaml
-# SpecGuard section locking (optional) — govern only named heading regions of a
-# file, leaving the rest free to edit. Under `files:`, map a watched file to the
-# headings whose sections should be governed; edits outside them pass quietly.
-# files:
-#   "ARCHITECTURE.md":
-#     - "Goal"
-#     - "Out of Scope"
-files: {}
-```
-
-</details>
-
-<details>
-<summary><strong>Full workflow with the <code>/specguard approve</code> comment command</strong></summary>
+**The workflow.** The short version in [Quick start](#quick-start) runs the check on each pull request. If you also want approvals to re-run the check without a new commit, and you want the `/specguard approve` comment to work, use the fuller workflow:
 
 ```yaml
 name: specguard
@@ -207,13 +161,13 @@ on:
   pull_request:
   pull_request_review:
     types: [submitted]
-  issue_comment:                           # /specguard approve comment command
+  issue_comment:                          # enables the /specguard approve comment
     types: [created]
 permissions:
   contents: read
   pull-requests: read
 jobs:
-  specguard:                               # the required branch-protection check
+  specguard:                              # the required branch-protection check
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -223,7 +177,7 @@ jobs:
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
-  reevaluate:                              # an approval re-runs the check in place
+  reevaluate:                             # an approving review re-runs the check in place
     if: github.event_name == 'pull_request_review' && github.event.review.state == 'approved'
     runs-on: ubuntu-latest
     permissions: { actions: write }
@@ -233,7 +187,7 @@ jobs:
           run_id=$(gh api "repos/${{ github.repository }}/actions/workflows/specguard.yml/runs?event=pull_request&head_sha=${{ github.event.pull_request.head.sha }}" --jq '.workflow_runs[0].id // empty')
           [ -n "$run_id" ] && gh api -X POST "repos/${{ github.repository }}/actions/runs/$run_id/rerun"
 
-  comment-approve:                         # /specguard approve re-runs the check
+  comment-approve:                        # /specguard approve re-runs the check
     if: github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/specguard approve')
     runs-on: ubuntu-latest
     permissions: { actions: write, pull-requests: read }
@@ -245,217 +199,270 @@ jobs:
           [ -n "$run_id" ] && gh api -X POST "repos/${{ github.repository }}/actions/runs/$run_id/rerun"
 ```
 
-The comment command grants no authority on its own — it only retriggers the gate, which recomputes authorization from `roles.yml` at the trusted base commit. Anyone may comment; only a real role member clears a block.
+**The secret.** SpecGuard uses your own API key and never bills you. With the default model, budget somewhere around one to two cents per watched file per push. The key lives as a repository secret and is masked in the logs.
 
-</details>
+**Branch protection.** Require the `specguard` check on your default branch. Until that box is ticked, the check reports its verdict but the merge button is not actually held.
 
-> [!IMPORTANT]
-> You bring your own API key and choose the model — SpecGuard never bills you. With the default `claude-sonnet-4-6`, expect roughly **$0.01–0.02 per watched file per push**. The Action provisions its own Python on the runner, so the gate works for repos in **any language**.
+**A note on other providers.** The Marketplace Action passes an Anthropic key, so it runs Anthropic out of the box. To use OpenAI, Gemini, or OpenRouter in CI, skip the composite action and run the module directly with the matching environment variable:
 
----
+```yaml
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install "specguard-ci[openai]"
+      - run: python -m specguard.ci
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+```
 
-## Configuration
+Set `provider` and `model` in `config.yml` to match. That is exactly how this repository runs its own gate.
 
-All config lives in `.specguard/`. Only `lock.json` is required; the rest are optional and default sensibly.
+## Configuration files
 
-> [!TIP]
-> You don't have to write these by hand. `specguard init` offers to scaffold all four files — `lock.json`, `config.yml`, `roles.yml`, and `regions.yml` — and every generated file is **self-documenting**: each key is explained inline, so you can configure it without leaving the file.
+Everything lives under `.specguard/`. Only `lock.json` is required. The rest are optional and have sensible defaults, so you can add them as you need them. The files below are complete and commented, so you can copy one in and edit from there.
 
-### 1. `lock.json` — the goal and scope *(required)*
+### `lock.json`
+
+The one required file. It is the goal and the boundary that every change is measured against. JSON has no comments, so the fields are described underneath.
 
 ```json
 {
-  "goal": "One sentence describing what this project is",
-  "scope_in":  ["things that belong"],
-  "scope_out": ["things that don't"]
+  "goal": "A local-first notes app that stores notes as plain Markdown files on the user's machine",
+  "scope_in": [
+    "creating, editing, and organizing notes",
+    "full-text search across a user's own notes",
+    "tags and backlinks between notes",
+    "export to HTML or PDF"
+  ],
+  "scope_out": [
+    "accounts, login, or authentication",
+    "syncing notes to a hosted server",
+    "a mobile or web app",
+    "usage tracking or telemetry"
+  ]
 }
 ```
 
-### 2. `config.yml` — behavior *(optional; defaults shown)*
+| Field | Required | What it does |
+|---|---|---|
+| `goal` | yes | One sentence describing what the project is. This is the anchor every change is compared against. |
+| `scope_in` | no | Topics that legitimately belong. Edits that elaborate these read as additive. Leave it empty and the goal alone carries the judgment. |
+| `scope_out` | no | The explicit "not this project" list. Introducing any of these is a scope change. Naming a boundary is what makes a block precise instead of a guess, so this is the list worth spending time on. |
+
+The file is checked in and versioned with your code. If your repo already uses Spec Kit or OpenSpec, you can skip it and SpecGuard will derive the same thing from those files. See [Reuse the specs you already have](#reuse-the-specs-you-already-have).
+
+### `config.yml`
+
+Behavior settings, all optional. The version below shows every key commented out, which means it changes nothing on its own. The values shown are the defaults, so uncomment only what you want to change.
 
 ```yaml
-watch: ["README.md", "CLAUDE.md", "AGENTS.md", "ARCHITECTURE.md", "*.kilo", ".specguard/**"]
-block_threshold: 0.75        # confidence needed to block (vs. warn)
-on_error: warn               # vendor outage: pass with a loud warning ("fail" to block instead)
-provider: anthropic          # anthropic | openai | gemini | openrouter
-model: claude-sonnet-4-6
-max_diff_chars: 30000        # diffs larger than this are truncated before classifying
+# .specguard/config.yml
+# Every key is optional. Commented out means "use the default shown".
+
+# watch: the files SpecGuard classifies. Anything not matched here is ignored,
+# which is why a code-only PR usually sails through untouched. Globs are allowed.
+# watch:
+#   - "README.md"
+#   - "CLAUDE.md"
+#   - "AGENTS.md"
+#   - "ARCHITECTURE.md"
+#   - "docs/**/*.md"
+#   - ".specguard/**"
+
+# block_threshold: how confident the model must be to BLOCK a scope change.
+# Below this number it warns instead. Raise it for fewer blocks and more
+# warnings, lower it to be stricter. Range 0.0 to 1.0.
+# block_threshold: 0.75
+
+# on_error: what to do when the provider call fails (outage, rate limit, bad key).
+#   warn  (default): let the PR pass with a loud "could not classify" note.
+#   fail:            hold the PR until classification succeeds.
+# The default fails open on purpose, so a provider having a bad day does not
+# become your team having a bad day.
+# on_error: warn
+
+# provider: which backend classifies. One of:
+#   anthropic (default) | openai | gemini | openrouter
+# Anything other than anthropic needs an explicit model below.
+# provider: anthropic
+
+# model: the model id to classify with. claude-sonnet-4-6 is the calibrated
+# default. claude-opus-4-8 is refused by a built-in guardrail: it costs far more
+# with no measured gain on this task.
+# model: claude-sonnet-4-6
+
+# max_diff_chars: per-file diff size, in characters, before the diff is
+# truncated to keep token cost bounded. Must be greater than 0.
+# max_diff_chars: 30000
 ```
 
-### 3. `roles.yml` — who may approve *(optional)*
+### `roles.yml`
 
-Adding this file switches SpecGuard from advisory **warn** mode into enforcing **block** mode.
+Who is allowed to approve a scope change, and who is allowed to touch the protected files. Adding this file is the switch that turns scope changes from a warning into a block. Without it, SpecGuard advises but never holds anything.
 
 ```yaml
+# .specguard/roles.yml
+# The presence of this file switches the gate from WARN mode into BLOCK mode.
+
+# roles: map a role name to the GitHub usernames in it. Names are yours to choose.
 roles:
-  architect: [your-github-username]
+  architect: [your-gh-username]
+  # docs-lead: [alice-gh, ben-gh]        # you can define as many roles as you like
+
+# rules: for a path or glob, who may do what. Two rule kinds exist.
+#
+#   edit: <role>
+#     Only this role may change the path at all. This is a deterministic hard
+#     block with no model involved, so it never misfires. Use it to protect the
+#     files that define your governance.
+#
+#   scope_changes: { approve: <role> }
+#     When the classifier flags a scope change on this path, only an APPROVED
+#     review (or approval) from this role clears the block.
+#
+# Additive, in-scope changes always pass on their own. There is no rule to write
+# for them, and no rule key that would let you add friction to them.
 rules:
-  ".specguard/**":                        # nobody outside the role may touch the lock itself
+  ".specguard/**":                        # protect the lock and roles files themselves
     edit: architect
-  "README.md":                            # who can approve scope changes, per file
+  "README.md":                            # who approves scope changes to the README
     scope_changes: { approve: architect }
+
+  # More examples, uncomment and adapt:
+  # "ARCHITECTURE.md":
+  #   edit: architect                     # only the architect may edit this file
+  # "docs/**":
+  #   scope_changes: { approve: docs-lead }
 ```
 
-> [!NOTE]
-> The presence of `roles.yml` is what switches SpecGuard from advisory **warn** mode to enforcing **block** mode. Without it, scope changes warn but never block.
+A short but important detail: authorization is always recomputed from this file at the trusted base commit, using the approver's real GitHub login. Anyone can trigger a re-run of the check. Only someone genuinely in the named role can clear a block.
 
-### 4. `regions.yml` — lock only part of a file *(optional)*
+### `regions.yml`
+
+Section locking, optional. By default SpecGuard governs a watched file as a whole. This narrows that to named heading regions, so you can lock the parts that define direction and leave the surrounding prose free to edit.
 
 ```yaml
+# .specguard/regions.yml
+# Optional. Restrict governance to named headings in a file. Edits outside every
+# listed heading pass without ever reaching the classifier, so this can only
+# reduce friction, never add it.
+#
+# If a listed heading is renamed or removed, the check fails loudly rather than
+# leaving the section silently ungoverned. That is deliberate: rename it here on
+# purpose so a quiet rename cannot slip a section out from under governance.
 files:
-  "ARCHITECTURE.md": ["Goal", "Out of Scope"]   # govern these headings; leave the rest free
+  "ARCHITECTURE.md":
+    - "Goal"
+    - "Out of Scope"
+  # "README.md":
+  #   - "Project scope"
 ```
 
-See [Advanced governance](#advanced-governance) for section locking, monorepos, and audit export.
-
----
-
-## Features
-
-| Area | What you get |
-|---|---|
-| **Semantic gate** | LLM classifies each watched-file diff as *additive* or *scope change*, with a confidence score and a plain-English reason. |
-| **Deterministic blocks** | Protected paths (e.g. the lock itself) are enforced by role, with no AI involved — never a false positive. |
-| **Merge-time enforcement** | Runs as a required GitHub branch-protection check; nothing else can block a merge. |
-| **Role-based approval** | `roles.yml` maps GitHub logins to roles; one authorized approval clears a block. |
-| **Three approval paths** | Native PR review, `/specguard approve` comment, or `specguard approve` CLI — all evaluated by the same rule. |
-| **Provider-agnostic** | Anthropic, OpenAI, Gemini, or OpenRouter behind one engine — bring your own key. |
-| **Local preview** | `specguard check` runs the exact same engine on your working tree, staged changes, or a branch. |
-| **Pre-commit hook** | Advisory scope warnings at commit time (never blocks the commit). |
-| **MCP server** | Coding agents (e.g. Claude Code) can check a drafted change *before* writing it. |
-| **Framework adapters** | Auto-derive the lock from existing Spec Kit or OpenSpec files. |
-| **Section locking** | Govern individual headings of a file while the rest stays free to edit. |
-| **Monorepo multi-scope** | A `.specguard/` per package governs each subtree independently in one run. |
-| **Audit export** | One JSON record per verdict for compliance trails, on an opt-in env var. |
-| **Resilient by default** | Vendor outages pass with a loud warning (`on_error: warn`) rather than blocking your team. |
-
----
-
-## LLM providers
-
-One shared engine sits behind a provider seam — pick the backend you already pay for. Anthropic ships in the base install; the rest are one extra away.
-
-| `provider:` | Install | API key env var | Example `model:` |
-|---|---|---|---|
-| `anthropic` *(default)* | `pip install specguard-ci` | `ANTHROPIC_API_KEY` | `claude-sonnet-4-6` |
-| `openai` | `pip install "specguard-ci[openai]"` | `OPENAI_API_KEY` | `gpt-4o-2024-11-20` |
-| `gemini` | `pip install "specguard-ci[gemini]"` | `GEMINI_API_KEY` | `gemini-2.0-flash` |
-| `openrouter` | `pip install "specguard-ci[openai]"` | `OPENROUTER_API_KEY` | `anthropic/claude-3.5-sonnet` |
-
-> [!NOTE]
-> Non-Anthropic providers require an explicit `model:`. Only **Anthropic + Sonnet 4.6** is calibration-verified against the golden corpus (27/27); other backends work but are unvalidated until you run them through `tests/eval/run_eval.py`. `claude-opus-4-8` is hard-blocked by a project guardrail — no quality gain on this task at ~6× the cost.
-
----
-
-## Local tools
-
-Everything the merge gate decides, you can preview locally — same engine, same verdicts, advisory only.
+## Command reference
 
 ```bash
-pip install specguard-ci
-
-specguard init                        # guided setup: goal, scope, optional roles/workflow/hook
-specguard check                       # what would the gate say about my working tree?
-specguard check --staged              # ...about what I'm committing?
-specguard check --base origin/main    # ...about this branch as a PR?
+specguard init      # scaffold .specguard/ and the workflow, interactively
+specguard check     # preview the gate's verdict for local changes
+specguard approve   # approve a pull request's scope change from the terminal
+specguard mcp       # run the MCP server over stdio (needs the [mcp] extra)
 ```
+
+**`specguard check`** runs the same engine the merge gate does, against local changes. It is advisory and never changes anything.
+
+```bash
+specguard check                       # what would the gate say about my working tree?
+specguard check --staged              # only what I have staged for commit
+specguard check --base origin/main    # this whole branch, the way a PR would see it
+specguard check --json                # machine-readable output for scripts
+```
+
+| Command | Useful flags | Notes |
+|---|---|---|
+| `init` | `--yes` non-interactive with a placeholder goal, `--force` overwrite an existing lock | Writes only the files you accept. |
+| `check` | `--staged`, `--base <ref>`, `--head <ref>`, `--json`, `--hook` | Governance is read from your committed baseline, so editing your own lock locally does not change the verdict a real PR would get. |
+| `approve <pr>` | `--repo owner/name` | Needs `GH_TOKEN` or `GITHUB_TOKEN` with pull-request access. Repo is inferred from your `origin` remote otherwise. |
+| `mcp` | none | Speaks the Model Context Protocol over stdio. |
 
 ### Pre-commit hook
 
-Advisory scope warnings at commit time — never blocks a commit (enforcement stays at merge time).
+An advisory warning at commit time. It never blocks the commit, so it cannot train people to bypass it.
 
 ```yaml
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/Sawaiz-zip/spec-guard
-    rev: v0.4.1
-    hooks: [{ id: specguard-check }]
+    rev: v0.4.4
+    hooks:
+      - id: specguard-check
 ```
 
-### MCP server for coding agents
+### MCP server
 
-Let an agent check a drafted spec change *before* it writes it — drift prevention moves from "blocked PR" to "agent self-corrects mid-draft."
+Let a coding agent check a change before it writes it. Drift prevention moves from "the PR got blocked" to "the agent reconsidered mid-draft".
 
 ```bash
 pip install "specguard-ci[mcp]"
 ```
 
 ```json
-// .mcp.json (e.g. for Claude Code)
+// .mcp.json, for example in Claude Code
 { "mcpServers": { "specguard": { "command": "specguard", "args": ["mcp"] } } }
 ```
 
 The server exposes four tools:
 
-| Tool | Purpose |
+| Tool | What it answers |
 |---|---|
-| `check_proposed_change` | Full verdict for proposed content; on a block, returns a `redirect` naming the approver role. |
-| `check_permission` | May this identity make this class of change to this file? |
-| `get_scope_lock` | The active goal and scope. |
-| `list_watched_paths` | Which paths are governed. |
-
-> [!IMPORTANT]
-> Local results are always advisory — nothing local enforces. Governance config is read from your committed baseline, so editing your own lock locally does **not** change the verdict your PR will actually get.
-
----
+| `check_proposed_change` | A full verdict for content the agent is about to write. On a would-be block it returns a redirect naming the approver role, so the agent can propose the change properly instead of just writing it. |
+| `check_permission` | Whether a given identity may make a given class of change to a given file. |
+| `get_scope_lock` | The active goal and scope. Pass a `path` to get the lock governing that path in a monorepo. |
+| `list_watched_paths` | Which paths are governed, and whether enforcement is on. |
 
 ## Approving a scope change
 
-When the gate blocks a change, any **one** authorized approval clears it — three equivalent paths, evaluated by the same rule and recorded identically:
+When the gate holds a change, one authorized approval clears it. There are three ways to give that approval, and they are all evaluated by the same rule and recorded the same way.
+
+<div align="center">
+<img src="docs/images/approval-sequence.svg" alt="Block, approve, re-run, unblock" width="700" />
+</div>
 
 | Path | How |
 |---|---|
-| **Native PR review** | An authorized role member clicks **Approve** in the GitHub review UI. |
-| **Comment command** | An authorized member comments `/specguard approve` on the PR (mobile-friendly); the gate re-runs in place. |
-| **CLI** | `specguard approve <pr-number>` from the terminal (needs `GH_TOKEN` / `GITHUB_TOKEN`). |
+| **Native review** | Someone in the role clicks Approve in the GitHub review UI. |
+| **Comment** | Someone in the role comments `/specguard approve` on the pull request. Handy from a phone. |
+| **CLI** | `specguard approve <pr-number>` from a terminal, with a token in the environment. |
 
-> [!NOTE]
-> Authorization always uses the **server-side GitHub login** against `roles.yml`. Anyone can *trigger* a re-run, but only a real role member can *approve* — a comment or CLI call from outside the role does not clear the block.
+None of these grant authority by themselves. Each one just re-runs the gate, which recomputes who is allowed from `roles.yml` at the trusted base. A new push after an approval starts blocked again, so a stale approval cannot carry over to code nobody has looked at.
 
----
+## Choosing a provider
 
-## Govern the specs you already have
+One engine sits behind a provider seam, so you pick the backend you already pay for. Anthropic is included in the base install. The rest are one extra away.
 
-If your repo uses [Spec Kit](https://github.com/github/spec-kit) or [OpenSpec](https://github.com/Fission-AI/OpenSpec), you don't have to hand-author `lock.json` — SpecGuard reads the goal and scope from the files those frameworks already maintain (parsing their public markdown; it never imports their code):
+| `provider:` | Install | Key env var | Example `model:` |
+|---|---|---|---|
+| `anthropic` (default) | `pip install specguard-ci` | `ANTHROPIC_API_KEY` | `claude-sonnet-4-6` |
+| `openai` | `pip install "specguard-ci[openai]"` | `OPENAI_API_KEY` | `gpt-4o-2024-11-20` |
+| `gemini` | `pip install "specguard-ci[gemini]"` | `GEMINI_API_KEY` | `gemini-2.0-flash` |
+| `openrouter` | `pip install "specguard-ci[openai]"` | `OPENROUTER_API_KEY` | `anthropic/claude-3.5-sonnet` |
 
-| Source | Where goal/scope comes from |
-|---|---|
-| **Explicit lock** *(always wins)* | `.specguard/lock.json` |
-| **Spec Kit** | `.specify/memory/constitution.md` + the touched `specs/<feature>/spec.md` |
-| **OpenSpec** | `openspec/project.md` + the touched `openspec/changes/<id>/proposal.md` scope sections |
-| **Plain** | no framework detected — behaves exactly as a hand-written lock |
-
-Selection is automatic from your repo layout, in that precedence order. Every run reports which source it used (`Governance source: …`), and an explicit `lock.json` always overrides framework derivation.
-
-> [!NOTE]
-> The **Spec Kit** adapter is dogfooded on this repository. The **OpenSpec** adapter is built against OpenSpec's documented format but not yet validated against a live project — if your layout differs, pin scope with an explicit `.specguard/lock.json`.
-
----
+A word on honesty here. Anthropic with Sonnet 4.6 is the one combination checked against the project's labelled test set, and it passes all of it. The other providers are wired up and tested for plumbing, but they have not been calibrated for classification quality, so treat them as capable but unverified until you run them through `tests/eval/run_eval.py` on your own specs. Providers other than Anthropic need an explicit `model`.
 
 ## Advanced governance
 
-### Lock a section, let the rest float
+### Lock a section, leave the rest free
 
-Govern just a heading region of a file — a goal paragraph or an out-of-scope list — while the FAQ or examples around it stay free to edit:
+Govern a single heading region, such as a goal paragraph or an out-of-scope list, while the examples and FAQ around it stay editable. See [`regions.yml`](#regionsyml). Edits outside every declared region never reach the classifier, and a renamed anchor fails loudly rather than un-governing itself quietly.
 
-```yaml
-# .specguard/regions.yml
-files:
-  "ARCHITECTURE.md": ["Goal", "Out of Scope"]
-```
+### One scope per package in a monorepo
 
-Edits outside every declared region pass quietly without reaching the classifier — strictly *less* friction, never more. If a declared heading is renamed or removed, the check fails loudly (never silently un-governed).
-
-### Monorepo: one scope per package
-
-Drop a `.specguard/` into any subdirectory and it governs that subtree independently — its own goal, scope, roles, and regions:
+Drop a `.specguard/` into a subdirectory and it governs that subtree on its own, with its own goal, scope, roles, and regions.
 
 ```text
-packages/api/.specguard/lock.json   # "API service",  scope_out: [billing]
-packages/web/.specguard/lock.json   # "Web app",       scope_out: [payments]
+packages/api/.specguard/lock.json   # "orders API",   out of scope: [billing]
+packages/web/.specguard/lock.json   # "marketing site", out of scope: [accounts]
 ```
 
-A PR touching both packages gets two independent verdicts in one run. Each package's config is written as if its `.specguard/` were the repo root — copy the whole directory between packages and it just works. Files outside any package scope fall back to the repo-root lock.
+A pull request that touches both packages gets two independent verdicts in one run, each judged against its own lock. Each package's `.specguard/` is written as if it were the repo root, so you can copy the whole directory between packages. One thing to know: the list of watched files is read from the repo-root `config.yml`, so make sure its `watch` covers the package paths, for example `packages/**/README.md`.
 
 ### Audit export
 
@@ -463,36 +470,45 @@ A PR touching both packages gets two independent verdicts in one run. Each packa
 SPECGUARD_AUDIT_PATH=audit.json python -m specguard.ci
 ```
 
-Writes one JSON record per verdict — file, scope, classification, confidence, required approver roles, and every approval seen on the PR — for upload as a workflow artifact. No secrets, no new datastore; a pure formatting pass over data the gate already computed.
+Writes one JSON record per verdict: the file, the scope, the classification and confidence, the required approver roles, and every approval seen on the pull request. It is meant to be uploaded as a workflow artifact. There is no new datastore and no secrets in the output. It is a plain formatting pass over data the gate already computed.
 
----
+## Reuse the specs you already have
 
-## Roadmap
+If your repo uses [Spec Kit](https://github.com/github/spec-kit) or [OpenSpec](https://github.com/Fission-AI/OpenSpec), you do not need to hand-write `lock.json`. SpecGuard reads the goal and scope from the files those frameworks already keep, by parsing their public Markdown. It never imports their code.
 
-| Phase | Status | What ships |
-|:---|:---:|:---|
-| **0 — CI Gate** | 🟢 Shipped | GitHub Action · scope classification · role-based approval · branch protection |
-| **1 — Local Tools** | 🟢 Shipped | CLI (`init`, `check`) · pre-commit hook · MCP server |
-| **1.5 — Provider-Agnostic** | 🟢 Shipped | Anthropic · OpenAI · Gemini · OpenRouter behind one engine · Python 3.10+ |
-| **2 — Framework Adapters** | 🟢 Shipped | Spec Kit + OpenSpec derivation · explicit-lock override · source reporting |
-| **2 — Approval Commands** | 🟢 Shipped | `/specguard approve` comment · `specguard approve` CLI · MCP `check_permission` |
-| **2 — GitHub App** | 🟡 Code-complete<br>*(not deployed)* | Optional companion for public repos: governs **fork PRs** (which the Action can't), plus native check runs and bot-vs-human identity. Built and tested; not yet hosted. GitLab is a separate future spec. |
-| **3 — Advanced** | 🟢 Shipped | Section-level locking · monorepo multi-scope · audit export |
+| Source | Where the goal and scope come from |
+|---|---|
+| Explicit lock (always wins) | `.specguard/lock.json` |
+| Spec Kit | `.specify/memory/constitution.md` plus the touched `specs/<feature>/spec.md` |
+| OpenSpec | `openspec/project.md` plus the touched `openspec/changes/<id>/proposal.md` |
+| Plain | no framework found, behaves exactly like a hand-written lock |
 
----
+Selection follows that precedence automatically from your repo layout, and every run reports which source it used. The Spec Kit adapter is exercised on this repository itself. The OpenSpec adapter is built to OpenSpec's documented format but has not been run against a live OpenSpec project, so if your layout differs, pin things down with an explicit `lock.json`.
 
-## Principles
+## How this project was built
 
-**No false blocks. No new UI. No dashboards.**
+SpecGuard was built spec first, with [GitHub Spec Kit](https://github.com/github/spec-kit). Each feature has a spec, a plan, and a task list under [`specs/`](specs/), and the project's constitution lives at [`.specify/memory/constitution.md`](.specify/memory/constitution.md).
 
-The only enforceable boundary is merge time — everything else is advisory. A wrong Friday block means uninstall by Monday, so additive changes always pass silently, hard blocks are deterministic (no AI), and probabilistic verdicts always show their confidence and never block without an explanation.
+It also runs its own gate on itself. Every pull request to this repo is checked by SpecGuard against those same spec files, so a change that drifts from the constitution gets held here just like it would in your repo. If you want to see the tool at work, the specs directory and the commit history are the honest version of the demo.
 
-[Architecture & flow diagrams](docs/architecture.md) · Full constitution: [`.specify/memory/constitution.md`](.specify/memory/constitution.md) · Detailed runbook: [`docs/quickstart.md`](docs/quickstart.md)
+## Status
 
----
+| Area | Status | What it covers |
+|---|:---:|---|
+| CI gate | Shipped | The GitHub Action, scope classification, role-based approval, branch protection. |
+| Local tools | Shipped | The CLI (`init`, `check`, `approve`), the pre-commit hook, the MCP server. |
+| Provider support | Shipped | Anthropic, OpenAI, Gemini, and OpenRouter behind one engine. Anthropic is the calibrated default. |
+| Framework adapters | Shipped | Deriving the lock from Spec Kit or OpenSpec, with an explicit lock as the override. |
+| Approval commands | Shipped | The `/specguard approve` comment and the `specguard approve` CLI. |
+| Advanced governance | Shipped | Section locking, monorepo multi-scope, audit export. |
+| GitHub App | Built, not deployed | An optional companion for public repos that governs fork pull requests, which the Action cannot reach on its own. It is written and tested but not hosted anywhere yet. |
+
+Design notes worth stating plainly: additive changes pass silently, hard blocks are deterministic and involve no model, probabilistic verdicts always show their confidence and never block without a reason, and if the provider is unreachable the default is to warn rather than block. There is no dashboard and no second place to log in. The whole thing lives in your repo and your CI.
+
+More detail lives in [`docs/architecture.md`](docs/architecture.md), [`docs/quickstart.md`](docs/quickstart.md), and [`CHANGELOG.md`](CHANGELOG.md).
 
 <div align="center">
 
-Built with [Spec Kit](https://github.com/github/spec-kit) · Powered by Claude · [MIT License](LICENSE)
+Built with [Spec Kit](https://github.com/github/spec-kit). [MIT License](LICENSE).
 
 </div>
