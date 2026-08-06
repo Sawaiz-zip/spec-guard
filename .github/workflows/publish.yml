@@ -1,0 +1,55 @@
+name: publish
+
+# Publish the package to PyPI when a GitHub Release is published, using PyPI
+# Trusted Publishing (OIDC). No API token is stored anywhere.
+#
+# ONE-TIME SETUP (needs a maintainer of the `specguard-ci` PyPI project):
+#   PyPI project -> Settings -> Publishing -> Add a trusted publisher (GitHub):
+#     Owner:       Sawaiz-zip
+#     Repository:  spec-guard
+#     Workflow:    publish.yml
+#     Environment: pypi
+# Until that is added, the publish job below will fail cleanly (nothing leaks);
+# the build job still runs and uploads the artifacts for inspection.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist and wheel
+        run: |
+          pip install --quiet build
+          python -m build
+      - name: Check metadata
+        run: |
+          pip install --quiet twine
+          twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # required for PyPI Trusted Publishing (OIDC)
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

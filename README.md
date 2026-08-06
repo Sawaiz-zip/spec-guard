@@ -85,6 +85,12 @@ pip install "specguard-ci[gemini]"    # Google Gemini
 pip install "specguard-ci[mcp]"       # the MCP server for coding agents
 ```
 
+The published package tracks the last release. For the very latest, including fixes not yet on PyPI, install straight from the repo:
+
+```bash
+pip install "git+https://github.com/Sawaiz-zip/spec-guard.git"
+```
+
 SpecGuard needs Python 3.10 or newer. The GitHub Action installs its own Python on the runner, so the gate itself works for a repo in any language.
 
 ## Quick start
